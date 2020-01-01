@@ -24,7 +24,7 @@
         "sources": [
             "cppsrc/main.cpp",
             "cppsrc/window.cpp",
-            # "cppsrc/h264_player.cpp",
+            "cppsrc/h264_player.cpp",
         ],
         "include_dirs": [
             "<!@(node -p \"require('node-addon-api').include\")",
