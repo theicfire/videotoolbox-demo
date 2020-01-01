@@ -146,8 +146,7 @@ int play_video(std::string filename) {
         t.reset();
         player.render(frame);
         printf("render took %f ms\n", t.getElapsedMilliseconds());
-        // Run roughly at 30 FPS, by sleeping 25ms between rendering/decoding
-        // frames.
+        // Slow down the rate that we decode and render by sleeping
         usleep(25000);
         t.reset();
       } else if (result == AVERROR(EINVAL)) {
