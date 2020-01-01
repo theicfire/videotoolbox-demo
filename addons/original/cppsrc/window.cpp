@@ -34,6 +34,7 @@ extern "C" {
 #include <cstdio>
 #include <iostream>
 #include "h264_player.h"
+#include "timer.h"
 #include "window.h"
 
 /**
@@ -64,7 +65,7 @@ static enum AVPixelFormat get_hw_surface_fmt(struct AVCodecContext *s,
   return s->pix_fmt;
 }
 
-int run_program(std::string filename) {
+int play_video(std::string filename) {
   clock_t start = clock();
 
   int ret, videoStream;
@@ -130,6 +131,8 @@ int run_program(std::string filename) {
 
   // Splits what is stored in the file into frames and returns one each call.
   // These frames have not been decoded yet.
+  Timer t;
+  int frame_num = 0;
   while (av_read_frame(pFormatCtx, packet) == 0) {
     if (packet->stream_index == videoStream) {
       // Supply raw packet data as input to the decoder.
@@ -137,7 +140,16 @@ int run_program(std::string filename) {
 
       int result = avcodec_receive_frame(decoderCtx, frame);
       if (result == 0) {
+        frame_num += 1;
+        printf("#%d: Decode took %f ms, ", frame_num,
+               t.getElapsedMilliseconds());
+        t.reset();
         player.render(frame);
+        printf("render took %f ms\n", t.getElapsedMilliseconds());
+        // Run roughly at 30 FPS, by sleeping 25ms between rendering/decoding
+        // frames.
+        usleep(25000);
+        t.reset();
       } else if (result == AVERROR(EINVAL)) {
         std::cerr << "Codec not opened, or it is an encoder." << std::endl;
         exit(1);

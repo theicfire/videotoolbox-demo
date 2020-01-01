@@ -26,9 +26,8 @@ void app::StartClientWrapped(const CallbackInfo &info) {
         .ThrowAsJavaScriptException();
     return;
   }
-  std::string cool = info[0].As<Napi::String>().ToString();
-  std::cout << cool << std::endl;
-  run_program(cool);
+  std::string filename = info[0].As<Napi::String>().ToString();
+  play_video(filename);
 }
 
 Object InitAll(Env env, Object exports) {
