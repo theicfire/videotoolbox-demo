@@ -74,15 +74,15 @@ int run_program(std::string filename) {
   AVStream *video = nullptr;
   AVFrame *frame = nullptr;
   AVPacket *packet = av_packet_alloc();
-
-  // Validate filepath is present
+  if (SDL_Init(SDL_INIT_VIDEO)) {
+    fprintf(stderr, "Could not initialize SDL - %s\n", SDL_GetError());
+    exit(1);
+  }
 
   // Register all formats and codecs with FFmpeg
-
   av_register_all();
 
   // Open video file
-
   if (avformat_open_input(&pFormatCtx, filename.c_str(),
                           nullptr /* autodetect format */, nullptr) != 0) {
     fprintf(stderr, "Could not open file %s\n", filename.c_str());
@@ -91,18 +91,15 @@ int run_program(std::string filename) {
 
   // Read packets of file to get stream information.
   // Populates pFormatCtx->streams with the proper information
-
   if (avformat_find_stream_info(pFormatCtx, nullptr) < 0) {
     fprintf(stderr, "Could not find stream information\n");
     return -1;
   }
 
   // Dump pFormatCtx now to see whats inside
-
   // av_dump_format(pFormatCtx, 0, argv[1], 0);
 
   // Find a video stream
-
   ret =
       av_find_best_stream(pFormatCtx, AVMEDIA_TYPE_VIDEO, -1, -1, &decoder, 0);
   if (ret < 0) {
@@ -112,7 +109,6 @@ int run_program(std::string filename) {
   videoStream = ret;
 
   // Build AVCodecContext and populate with video stream parameters
-
   if (!(decoderCtx = avcodec_alloc_context3(decoder))) return AVERROR(ENOMEM);
 
   video = pFormatCtx->streams[videoStream];
@@ -121,11 +117,9 @@ int run_program(std::string filename) {
 
   // get_hw_surface_fmt will be called with all available with the
   // AVCodecContext and all available formats for the codec.
-
   decoderCtx->get_format = get_hw_surface_fmt;
 
   // Initialize the AVCodecContext to use the given AVCodec
-
   if (avcodec_open2(decoderCtx, decoder, nullptr) < 0) {
     fprintf(stderr, "Could not open the codec!\n");
     return -1;

@@ -16,11 +16,6 @@ H264Player::H264Player(int width, int height, enum AVPixelFormat pix_fmt)
   size_t yPlaneSz, uvPlaneSz;
   // Initial SDL subsystems
 
-  if (SDL_Init(SDL_INIT_VIDEO)) {
-    fprintf(stderr, "Could not initialize SDL - %s\n", SDL_GetError());
-    exit(1);
-  }
-
   window = SDL_CreateWindow(
       "Videotoolbox Decoder" /* title */, SDL_WINDOWPOS_CENTERED /* x */,
       SDL_WINDOWPOS_CENTERED /* y */, width, height, SDL_WINDOW_SHOWN);
