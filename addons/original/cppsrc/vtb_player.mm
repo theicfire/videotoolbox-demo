@@ -26,7 +26,7 @@ void PlayerStatistics::startDecoding() {
 }
 void PlayerStatistics::endDecoding() {
     const auto& delta = std::chrono::high_resolution_clock::now() - m_time;
-    m_currentFrame.decodingTime = 1.0e-6 * std::chrono::duration_cast<std::chrono::microseconds>(delta).count();
+    m_currentFrame.decodingTime = 1.0e-3 * std::chrono::duration_cast<std::chrono::microseconds>(delta).count();
 }
 
 void PlayerStatistics::startRendering() {
@@ -34,7 +34,7 @@ void PlayerStatistics::startRendering() {
 }
 void PlayerStatistics::endRendering() {
     const auto& delta = std::chrono::high_resolution_clock::now() - m_time;
-    m_currentFrame.renderingTime = 1.0e-6 * std::chrono::duration_cast<std::chrono::microseconds>(delta).count();
+    m_currentFrame.renderingTime = 1.0e-3 * std::chrono::duration_cast<std::chrono::microseconds>(delta).count();
 }
 
 std::vector<FrameStatistics> PlayerStatistics::getFrameStatistics() {
