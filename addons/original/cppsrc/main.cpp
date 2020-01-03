@@ -9,7 +9,8 @@
 #include <sstream>
 #include <string>
 #include <thread>
-#include "window.h"
+
+#include "vtb_player.h"
 
 using namespace std;
 using namespace Napi;
@@ -26,8 +27,19 @@ void app::StartClientWrapped(const CallbackInfo &info) {
         .ThrowAsJavaScriptException();
     return;
   }
+  
   std::string filename = info[0].As<Napi::String>().ToString();
-  play_video(filename);
+  custom::VTBPlayer player;
+  try {
+    player.play(filename);
+
+    for (const auto& e : player.getFrameStatistics()) {
+        printf("#%d: Decode took %f ms, render took %f ms\n", e.index, e.decodingTime, e.renderingTime);
+    }
+  } catch (const std::exception& e) {
+    Napi::TypeError::New(env, e.what())
+        .ThrowAsJavaScriptException();
+  }
 }
 
 Object InitAll(Env env, Object exports) {

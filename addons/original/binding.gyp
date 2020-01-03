@@ -25,9 +25,12 @@
             "cppsrc/main.cpp",
             "cppsrc/window.cpp",
             "cppsrc/h264_player.cpp",
+            "cppsrc/RenderingPipeline.mm", # does not work with ".m" files, only ".mm"
+            "cppsrc/vtb_player.mm"
         ],
         "include_dirs": [
             "<!@(node -p \"require('node-addon-api').include\")",
+            "<(module_root_dir)/external-libraries/ffmpeg-4.2.2" # just to avoid installation from Homebrew
         ],
         "dependencies": [
             "<!(node -p \"require('node-addon-api').gyp\")"
@@ -43,6 +46,7 @@
                     "-framework CoreMedia",
                     "-framework CoreGraphics",
                     "-framework VideoToolbox",
+                    "-framework AVFoundation",
                     "/System/Library/Frameworks/ApplicationServices.framework",
                     "<(module_root_dir)/lib/mac/libSDL2.a",
                     "<(module_root_dir)/lib/mac/libvpx.a",
