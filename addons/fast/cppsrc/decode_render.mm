@@ -108,7 +108,7 @@ DecodeRender::DecodeRender(CMVideoFormatDescriptionRef formatDescription, CMVide
     }
 }
 
-void DecodeRender::loop() {
+void DecodeRender::sdl_loop() {
     SDL_Event e;
     SDL_PollEvent(&e);
 }

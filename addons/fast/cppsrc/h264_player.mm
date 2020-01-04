@@ -42,7 +42,7 @@ void MinimalPlayer::play(const std::string& path) {
     DecodeRender* decodeRender = new DecodeRender(m_context->formatDescription, m_context->videoDimensions);
     bool quit = false;
     while (!quit) {
-        decodeRender->loop();
+        decodeRender->sdl_loop();
         CMSampleBufferRef buffRef = m_context->processNextFrame();
         if (buffRef == NULL) {
             break;

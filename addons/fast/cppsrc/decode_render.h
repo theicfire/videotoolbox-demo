@@ -38,7 +38,7 @@ class DecodeRender {
   DecodeRender(CMVideoFormatDescriptionRef formatDescription, CMVideoDimensions videoDimensions);
   ~DecodeRender();
   void decode_render(CMSampleBufferRef sampleBuffer);
-  void loop();
+  void sdl_loop();
   std::vector<FrameStatistics> getFrameStatistics();
 
  private:
