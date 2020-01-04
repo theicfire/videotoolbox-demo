@@ -33,10 +33,6 @@ void app::StartClientWrapped(const CallbackInfo& info) {
   try {
     player.play(filename);
 
-    // for (const auto& e : player.getFrameStatistics()) {
-    //   printf("#%d: Decode took %f ms, render took %f ms\n", e.index,
-    //          e.decodingTime, e.renderingTime);
-    // }
   } catch (const std::exception& e) {
     Napi::TypeError::New(env, e.what()).ThrowAsJavaScriptException();
   }

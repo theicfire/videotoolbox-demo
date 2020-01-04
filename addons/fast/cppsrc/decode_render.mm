@@ -10,15 +10,44 @@
 #import "decode_render.h"
 
 
+PlayerStatistics::PlayerStatistics() : m_index(0), m_currentFrame({0, 0, 0}) {
+}
+
+void PlayerStatistics::startFrame() {
+    m_currentFrame = {m_index++, 0, 0};
+}
+void PlayerStatistics::endFrame() {
+    m_frames.push_back(m_currentFrame);
+}
+
+void PlayerStatistics::startDecoding() {
+    m_time = std::chrono::high_resolution_clock::now();
+}
+void PlayerStatistics::endDecoding() {
+    const auto& delta = std::chrono::high_resolution_clock::now() - m_time;
+    m_currentFrame.decodingTime = 1.0e-3 * std::chrono::duration_cast<std::chrono::microseconds>(delta).count();
+}
+
+void PlayerStatistics::startRendering() {
+    m_time = std::chrono::high_resolution_clock::now();
+}
+void PlayerStatistics::endRendering() {
+    const auto& delta = std::chrono::high_resolution_clock::now() - m_time;
+    m_currentFrame.renderingTime = 1.0e-3 * std::chrono::duration_cast<std::chrono::microseconds>(delta).count();
+}
+
+std::vector<FrameStatistics> PlayerStatistics::getFrameStatistics() {
+    return m_frames;
+}
 struct DecodeRender::Context {
     VTDecompressionSessionRef decompressionSession;
     RenderingPipeline *pipeline;
     CMVideoFormatDescriptionRef formatDescription;
     CMVideoDimensions videoDimensions;
 
-    Context() : decompressionSession(NULL) {
+    PlayerStatistics statistics;
 
-    }
+    Context() : decompressionSession(NULL) { }
 
     ~Context() {
         if (decompressionSession) {
@@ -40,6 +69,10 @@ struct DecodeRender::Context {
         CMTime presentationDuration
     );
 };
+
+std::vector<FrameStatistics> DecodeRender::getFrameStatistics() {
+    return m_context->statistics.getFrameStatistics();
+}
 
 DecodeRender::DecodeRender(CMVideoFormatDescriptionRef formatDescription, CMVideoDimensions videoDimensions) : m_context(new Context()) {
     m_context->formatDescription = formatDescription;
@@ -90,6 +123,8 @@ DecodeRender::~DecodeRender() {
 }
 
 void DecodeRender::decode_render(CMSampleBufferRef sampleBuffer) {
+            m_context->statistics.startFrame();
+            m_context->statistics.startDecoding();
             VTDecodeFrameFlags flags = 0;
             VTDecodeInfoFlags flagOut;
             VTDecompressionSessionDecodeFrame(m_context->decompressionSession, sampleBuffer, flags, NULL, &flagOut);
@@ -120,7 +155,13 @@ void DecodeRender::Context::setup() {
 }
 
 void DecodeRender::Context::render(CVImageBufferRef imageBuffer) {
+    statistics.endDecoding();
+
+    statistics.startRendering();
     [pipeline render:imageBuffer];
+    statistics.endRendering();
+
+    statistics.endFrame();
 }
 
 /*

@@ -51,6 +51,10 @@ void MinimalPlayer::play(const std::string& path) {
         // manual sync
         usleep(25000);
     }
+    for (const auto& e : decodeRender->getFrameStatistics()) {
+      printf("#%d: Decode took %f ms, render took %f ms\n", e.index,
+             e.decodingTime, e.renderingTime);
+    }
 }
 
 void MinimalPlayer::open(const std::string& path) {
