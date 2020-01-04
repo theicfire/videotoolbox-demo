@@ -10,16 +10,16 @@
 #include <string>
 #include <thread>
 
-#include "vtb_player.h"
+#include "minimal_player.h"
 
 using namespace std;
 using namespace Napi;
 
 namespace app {
-void StartClientWrapped(const CallbackInfo &info);
+void StartClientWrapped(const CallbackInfo& info);
 }  // namespace app
 
-void app::StartClientWrapped(const CallbackInfo &info) {
+void app::StartClientWrapped(const CallbackInfo& info) {
   Napi::Env env = info.Env();
 
   if (info.Length() < 1) {
@@ -27,18 +27,18 @@ void app::StartClientWrapped(const CallbackInfo &info) {
         .ThrowAsJavaScriptException();
     return;
   }
-  
+
   std::string filename = info[0].As<Napi::String>().ToString();
-  custom::VTBPlayer player;
+  custom::MinimalPlayer player;
   try {
     player.play(filename);
 
-    for (const auto& e : player.getFrameStatistics()) {
-        printf("#%d: Decode took %f ms, render took %f ms\n", e.index, e.decodingTime, e.renderingTime);
-    }
+    // for (const auto& e : player.getFrameStatistics()) {
+    //   printf("#%d: Decode took %f ms, render took %f ms\n", e.index,
+    //          e.decodingTime, e.renderingTime);
+    // }
   } catch (const std::exception& e) {
-    Napi::TypeError::New(env, e.what())
-        .ThrowAsJavaScriptException();
+    Napi::TypeError::New(env, e.what()).ThrowAsJavaScriptException();
   }
 }
 
