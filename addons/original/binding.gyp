@@ -23,12 +23,9 @@
         },
         "sources": [
             "cppsrc/main.cpp",
-            "cppsrc/window.cpp",
-            "cppsrc/h264_player.cpp",
-            "cppsrc/RenderingPipeline.mm", # does not work with ".m" files, only ".mm"
-            "cppsrc/vtb_player.mm",
+            "cppsrc/RenderingPipeline.mm",
             "cppsrc/decode_render.mm",
-            "cppsrc/minimal_player.mm",
+            "cppsrc/h264_player.mm",
         ],
         "include_dirs": [
             "<!@(node -p \"require('node-addon-api').include\")",

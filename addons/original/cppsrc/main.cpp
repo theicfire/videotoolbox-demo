@@ -10,7 +10,7 @@
 #include <string>
 #include <thread>
 
-#include "minimal_player.h"
+#include "h264_player.h"
 
 using namespace std;
 using namespace Napi;

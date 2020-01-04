@@ -1,21 +1,21 @@
 #pragma once
-extern "C" {
-#include <libavcodec/avcodec.h>
-#include <libavcodec/videotoolbox.h>
-#include <libavformat/avformat.h>
-#include <libswscale/swscale.h>
-}
 
-class H264Player {
-  SDL_Texture *texture;
-  SDL_Renderer *renderer;
-  SDL_Window *window;
-  Uint8 *yPlane, *uPlane, *vPlane;
-  SwsContext *sws_ctx = nullptr;
-  int height;
-  int width;
+#include <chrono>
+#include <string>
+#include <vector>
 
+namespace custom {
+class MinimalPlayer {
  public:
-  H264Player(int width, int height, enum AVPixelFormat pix_fmt);
-  void render(AVFrame *frame);
+  explicit MinimalPlayer();
+  ~MinimalPlayer();
+  void play(const std::string& path);
+
+ private:
+  void open(const std::string& path);
+
+  // PImpl
+  struct Context;
+  Context* m_context;
 };
+}  // namespace custom
