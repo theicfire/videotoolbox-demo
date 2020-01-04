@@ -233,7 +233,8 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
     [commandBuffer presentDrawable:drawable];
     [commandBuffer commit];
 
-    [commandBuffer waitUntilCompleted];
+    // TODO don't need to wait here because it should be enough to sleep in upper loop
+    // [commandBuffer waitUntilCompleted];
 }
 
 @end
