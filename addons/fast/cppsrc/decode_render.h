@@ -3,8 +3,6 @@
 #include <string>
 #include <vector>
 
-#import <AVFoundation/AVFoundation.h>
-
 struct FrameStatistics {
   int index;
   double decodingTime;
@@ -35,9 +33,9 @@ class PlayerStatistics {
 
 class DecodeRender {
  public:
-  DecodeRender(CMVideoFormatDescriptionRef formatDescription, CMVideoDimensions videoDimensions);
+  DecodeRender(const std::vector<uint8_t>& frame);
   ~DecodeRender();
-  void decode_render(CMSampleBufferRef sampleBuffer);
+  void decode_render(const std::vector<uint8_t>& frame);
   void sdl_loop();
   std::vector<FrameStatistics> getFrameStatistics();
 

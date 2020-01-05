@@ -9,6 +9,7 @@
 #import "RenderingPipeline.h"
 #import "decode_render.h"
 
+#include "nalu_rewriter.h"
 
 PlayerStatistics::PlayerStatistics() : m_index(0), m_currentFrame({0, 0, 0}) {
 }
@@ -40,6 +41,7 @@ std::vector<FrameStatistics> PlayerStatistics::getFrameStatistics() {
     return m_frames;
 }
 struct DecodeRender::Context {
+    CMMemoryPoolRef memoryPool;
     VTDecompressionSessionRef decompressionSession;
     RenderingPipeline *pipeline;
     CMVideoFormatDescriptionRef formatDescription;
@@ -56,7 +58,8 @@ struct DecodeRender::Context {
         }
     }
 
-    void setup();
+    void setup(const std::vector<uint8_t>& frame);
+    CMSampleBufferRef create(const std::vector<uint8_t>& frame);
     void render(CVImageBufferRef imageBuffer);
 
     static void didDecompress(
@@ -74,10 +77,9 @@ std::vector<FrameStatistics> DecodeRender::getFrameStatistics() {
     return m_context->statistics.getFrameStatistics();
 }
 
-DecodeRender::DecodeRender(CMVideoFormatDescriptionRef formatDescription, CMVideoDimensions videoDimensions) : m_context(new Context()) {
-    m_context->formatDescription = formatDescription;
-    m_context->videoDimensions = videoDimensions;
-    m_context->setup();
+DecodeRender::DecodeRender(const std::vector<uint8_t>& frame) : m_context(new Context()) {
+    m_context->setup(frame);
+
     SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
     if (SDL_InitSubSystem(SDL_INIT_VIDEO)) {
         throw std::runtime_error("SDL::InitSubSystem");
@@ -122,16 +124,33 @@ DecodeRender::~DecodeRender() {
     // SDL_Quit();
 }
 
-void DecodeRender::decode_render(CMSampleBufferRef sampleBuffer) {
-            m_context->statistics.startFrame();
-            m_context->statistics.startDecoding();
-            VTDecodeFrameFlags flags = 0;
-            VTDecodeInfoFlags flagOut;
-            VTDecompressionSessionDecodeFrame(m_context->decompressionSession, sampleBuffer, flags, NULL, &flagOut);
-            CFRelease(sampleBuffer);
+void DecodeRender::decode_render(const std::vector<uint8_t>& frame) {
+    CMSampleBufferRef sampleBuffer = m_context->create(frame);
+    if (sampleBuffer == NULL) {
+        return;
+    }
+
+    m_context->statistics.startFrame();
+    m_context->statistics.startDecoding();
+
+    VTDecodeFrameFlags flags = 0;
+    VTDecodeInfoFlags flagOut;
+    VTDecompressionSessionDecodeFrame(m_context->decompressionSession, sampleBuffer, flags, NULL, &flagOut);
+    CFRelease(sampleBuffer);
 }
 
-void DecodeRender::Context::setup() {
+void DecodeRender::Context::setup(const std::vector<uint8_t>& frame) {
+    memoryPool = CMMemoryPoolCreate(NULL);
+
+    formatDescription = webrtc::CreateVideoFormatDescription(frame.data(), frame.size());
+    if (formatDescription == NULL) {
+        throw std::runtime_error("webrtc::CreateVideoFormatDescription");
+    }
+
+    videoDimensions = CMVideoFormatDescriptionGetDimensions(formatDescription);
+
+    printf("Video width: %d, height: %d\n", videoDimensions.width, videoDimensions.height);
+
     NSDictionary *decoderSpecification = @{
         (NSString *)kVTVideoDecoderSpecification_RequireHardwareAcceleratedVideoDecoder: @(YES)
     };
@@ -152,6 +171,15 @@ void DecodeRender::Context::setup() {
                                  &callBackRecord,
                                  &decompressionSession);
 
+}
+
+CMSampleBufferRef DecodeRender::Context::create(const std::vector<uint8_t>& frame) {
+    CMSampleBufferRef sampleBuffer = NULL;
+    if (!webrtc::H264AnnexBBufferToCMSampleBuffer(frame.data(), frame.size(), formatDescription, &sampleBuffer, memoryPool)) {
+        printf("ERROR: webrtc::H264AnnexBBufferToCMSampleBuffer\n");
+        return NULL;
+    }
+    return sampleBuffer;
 }
 
 void DecodeRender::Context::render(CVImageBufferRef imageBuffer) {
@@ -183,11 +211,6 @@ void DecodeRender::Context::didDecompress(void *decompressionOutputRefCon,
     }
 
     if (imageBuffer == NULL) {
-        return;
-    }
-
-    if (!CMTIME_IS_VALID(presentationTimeStamp)) {
-        // NSLog(@"Not a valid time for image buffer: %@", imageBuffer);
         return;
     }
 

@@ -1,108 +1,81 @@
 #include "h264_player.h"
 
-#include <exception>
+#include <vector>
+#include <memory>
+#include <fstream>
+#include <regex>
 
-#include <SDL2/SDL.h>
-
-#import <AVFoundation/AVFoundation.h>
-#import <VideoToolbox/VideoToolbox.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <dirent.h>
+#include <unistd.h>
 
 #import "decode_render.h"
 
 using namespace custom;
 
-// PImpl helps to avoid having Cocoa/Objective C code in header
-struct MinimalPlayer::Context {
-    AVAssetReader *reader;
-    NSArray *videoTracks;
-    CMVideoDimensions videoDimensions;
-    AVAssetReaderTrackOutput *videoTrackOutput;
-    CMVideoFormatDescriptionRef formatDescription;
-
-    Context() { } 
-    ~Context() { }
-
-    void setup();
-    CMSampleBufferRef processNextFrame();
+struct FrameEntry {
+    int index;
+    std::string name;
+    std::vector<uint8_t> data;
 };
 
-MinimalPlayer::MinimalPlayer() : m_context(new Context()) {
-
-}
-
-MinimalPlayer::~MinimalPlayer() {
-    if (m_context) {
-        delete m_context;
+std::vector<FrameEntry> load(const std::string& path) {
+    DIR *dp = opendir (path.c_str());
+    if (dp == NULL) {
+        return {};
     }
+
+    const std::regex pattern(".+_au_([0-9]+)\\.h264");
+    std::vector<FrameEntry> frames;
+    while (struct dirent *ep = readdir(dp)) {
+        if (ep->d_type != DT_REG) {
+            continue;
+        }
+
+        std::string name(ep->d_name, ep->d_namlen);
+        std::smatch m;
+        if (std::regex_match(name, m, pattern)) {
+            std::ifstream file(path + "/" + name, std::ios::binary | std::ios::ate);
+
+            std::streamsize size = file.tellg();
+            file.seekg(0, std::ios::beg);
+
+            std::vector<uint8_t> buffer(size);
+            if (file.read((char *)buffer.data(), size)) {
+                frames.push_back({std::stoi(m[1].str()), name, buffer});
+            }
+        }
+    }
+    closedir(dp);
+
+    std::sort(frames.begin(), frames.end(), [](const auto& a, const auto& b) {
+        return a.index < b.index;
+    });
+
+    return frames;
 }
 
 void MinimalPlayer::play(const std::string& path) {
-    open(path);
+    const auto& frames = load(path);
+    if (frames.empty()) {
+        return;
+    }
 
-    DecodeRender* decodeRender = new DecodeRender(m_context->formatDescription, m_context->videoDimensions);
+    printf("Number of frames: %lu\n", frames.size());
+    // use first frame to initialize decoder session
+    std::unique_ptr<DecodeRender> decodeRender = std::make_unique<DecodeRender>(frames[0].data);
+
+    size_t index = 0;
     bool quit = false;
-    while (!quit) {
+    while (!quit && index < frames.size()) {
         decodeRender->sdl_loop();
-        CMSampleBufferRef buffRef = m_context->processNextFrame();
-        if (buffRef == NULL) {
-            break;
-        }
-        decodeRender->decode_render(buffRef);
+        decodeRender->decode_render(frames[index++].data);
         // manual sync
         usleep(25000);
     }
     for (const auto& e : decodeRender->getFrameStatistics()) {
       printf("#%d: Decode took %f ms, render took %f ms\n", e.index,
              e.decodingTime, e.renderingTime);
-    }
-}
-
-void MinimalPlayer::open(const std::string& path) {
-    NSURL *url = [NSURL fileURLWithPath:[[NSString alloc] initWithUTF8String:path.c_str()]];
-    NSDictionary *options = @{AVURLAssetPreferPreciseDurationAndTimingKey: @(YES)};
-    AVAsset *asset = [[AVURLAsset alloc] initWithURL:url options:options];
-
-    NSError *error = nil;
-    m_context->reader = [AVAssetReader assetReaderWithAsset:asset error:&error];
-    if (error) {
-        throw std::runtime_error(error.localizedDescription.UTF8String);
-    }
-
-    m_context->videoTracks = [asset tracksWithMediaType:AVMediaTypeVideo];
-    m_context->setup();
-}
-
-CMSampleBufferRef MinimalPlayer::Context::processNextFrame() {
-    if (reader.status == AVAssetReaderStatusReading) {
-        CMSampleBufferRef sampleBuffer = [videoTrackOutput copyNextSampleBuffer];
-        if (sampleBuffer) {
-            return sampleBuffer;
-            // VTDecompressionSessionDecodeFrame(decompressionSession, sampleBuffer, flags, NULL, &flagOut);
-            // CFRelease(sampleBuffer);
-        }
-        return NULL;
-    } else if (reader.status == AVAssetReaderStatusFailed) {
-        // NSLog(@"Asset Reader failed with error: %@", self.assetReader.error);
-    } else if (reader.status == AVAssetReaderStatusCompleted) {
-        // NSLog(@"Reached the end of the video.");
-    }
-
-    return NULL;
-}
-
-void MinimalPlayer::Context::setup() {
-    AVAssetTrack *track = (AVAssetTrack *)videoTracks.firstObject;
-
-    formatDescription = (__bridge CMVideoFormatDescriptionRef)track.formatDescriptions.firstObject;
-    videoDimensions = CMVideoFormatDescriptionGetDimensions(formatDescription);
-
-    videoTrackOutput = [AVAssetReaderTrackOutput assetReaderTrackOutputWithTrack:track outputSettings:nil];
-    if ([reader canAddOutput:videoTrackOutput]) {
-        [reader addOutput:videoTrackOutput];
-    }
-
-    BOOL didStart = [reader startReading];
-    if (!didStart) {
-        // TODO
     }
 }
