@@ -46,6 +46,7 @@
                     "-framework CoreMedia",
                     "-framework CoreGraphics",
                     "-framework VideoToolbox",
+                    "-framework AVFoundation",
                     "/System/Library/Frameworks/ApplicationServices.framework",
                     "<(module_root_dir)/lib/mac/libSDL2.a",
                     "<(module_root_dir)/lib/mac/libvpx.a",
