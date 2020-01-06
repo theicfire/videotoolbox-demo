@@ -129,6 +129,13 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
     return self;
 }
 
+- (void)dealloc {
+    if (_textureCache) {
+        CFRelease(_textureCache);
+        _textureCache = nil;
+    }
+}
+
 - (void)render:(CVPixelBufferRef)frame {
     int width = (int)CVPixelBufferGetWidth(frame);
     int height = (int)CVPixelBufferGetHeight(frame);
