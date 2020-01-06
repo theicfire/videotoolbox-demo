@@ -48,18 +48,7 @@
                     "-framework VideoToolbox",
                     "-framework AVFoundation",
                     "/System/Library/Frameworks/ApplicationServices.framework",
-                    "<(module_root_dir)/lib/mac/libSDL2.a",
-                    "<(module_root_dir)/lib/mac/libvpx.a",
-                    "<(module_root_dir)/lib/mac/libxvidcore.a",
-                    "<(module_root_dir)/lib/mac/libx264.a",
-                    "<(module_root_dir)/lib/mac/libx265.a",
-                    "<(module_root_dir)/lib/mac/libaom.a",
-                    "<(module_root_dir)/lib/mac/libspeex.a",
-                    "<(module_root_dir)/lib/mac/libavcodec.a",
-                    "<(module_root_dir)/lib/mac/libavformat.a",
-                    "<(module_root_dir)/lib/mac/libavdevice.a",
-                    "<(module_root_dir)/lib/mac/libavutil.a",
-                    "<(module_root_dir)/lib/mac/libswscale.a",
+                    "<(module_root_dir)/lib/mac/libSDL2.a"
                 ]
             }]
         ]
