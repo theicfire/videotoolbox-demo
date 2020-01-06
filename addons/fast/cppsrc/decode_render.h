@@ -3,43 +3,45 @@
 #include <string>
 #include <vector>
 
-struct FrameStatistics {
-  int index;
-  double decodingTime;
-  double renderingTime;
-};
+namespace fast {
+  struct FrameStatistics {
+    int index;
+    double decodingTime;
+    double renderingTime;
+  };
 
-class PlayerStatistics {
- public:
-  PlayerStatistics();
+  class PlayerStatistics {
+   public:
+    PlayerStatistics();
 
-  void startFrame();
-  void endFrame();
+    void startFrame();
+    void endFrame();
 
-  void startDecoding();
-  void endDecoding();
+    void startDecoding();
+    void endDecoding();
 
-  void startRendering();
-  void endRendering();
+    void startRendering();
+    void endRendering();
 
-  std::vector<FrameStatistics> getFrameStatistics();
+    std::vector<FrameStatistics> getFrameStatistics() const;
 
- private:
-  std::chrono::high_resolution_clock::time_point m_time;
-  std::vector<FrameStatistics> m_frames;
-  int m_index;
-  FrameStatistics m_currentFrame;
-};
+   private:
+    std::chrono::high_resolution_clock::time_point m_time;
+    std::vector<FrameStatistics> m_frames;
+    int m_index;
+    FrameStatistics m_currentFrame;
+  };
 
-class DecodeRender {
- public:
-  DecodeRender(const std::vector<uint8_t>& frame);
-  ~DecodeRender();
-  void decode_render(const std::vector<uint8_t>& frame);
-  void sdl_loop();
-  std::vector<FrameStatistics> getFrameStatistics();
+  class DecodeRender {
+   public:
+    DecodeRender(const std::vector<uint8_t>& frame);
+    ~DecodeRender();
+    void decode_render(const std::vector<uint8_t>& frame);
+    void sdl_loop();
+    std::vector<FrameStatistics> getFrameStatistics() const;
 
- private:
-  struct Context;
-  Context* m_context;
-};
+   private:
+    struct Context;
+    Context* m_context;
+  };
+}

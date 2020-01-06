@@ -4,9 +4,9 @@
 #include <string>
 #include <vector>
 
-namespace custom {
+namespace fast {
 class MinimalPlayer {
  public:
   void play(const std::string& path);
 };
-}  // namespace custom
+}  // namespace fast

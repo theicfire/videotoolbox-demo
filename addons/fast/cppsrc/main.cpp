@@ -29,7 +29,7 @@ void app::StartClientWrapped(const CallbackInfo& info) {
   }
 
   std::string filename = info[0].As<Napi::String>().ToString();
-  custom::MinimalPlayer player;
+  fast::MinimalPlayer player;
   try {
     player.play(filename);
 

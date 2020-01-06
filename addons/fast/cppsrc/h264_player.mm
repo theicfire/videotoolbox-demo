@@ -10,9 +10,9 @@
 #include <dirent.h>
 #include <unistd.h>
 
-#import "decode_render.h"
+#include "decode_render.h"
 
-using namespace custom;
+using namespace fast;
 
 struct FrameEntry {
     int index;
@@ -74,8 +74,13 @@ void MinimalPlayer::play(const std::string& path) {
         // manual sync
         usleep(25000);
     }
-    for (const auto& e : decodeRender->getFrameStatistics()) {
-      printf("#%d: Decode took %f ms, render took %f ms\n", e.index,
-             e.decodingTime, e.renderingTime);
+
+    FILE* file = fopen("result.csv", "w");
+    if (file != NULL) {
+        fprintf(file, "frame,decoding,rendering\n");
+        for (const auto& e : decodeRender->getFrameStatistics()) {
+            fprintf(file, "%d,%f,%f\n", e.index, e.decodingTime, e.renderingTime);
+        }
+        fclose(file);
     }
 }

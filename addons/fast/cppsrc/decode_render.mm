@@ -1,15 +1,16 @@
-#include <exception>
+#include "decode_render.h"
 
+#include <exception>
 #include <SDL2/SDL.h>
+
+#include "nalu_rewriter.h"
 
 #import <AVFoundation/AVFoundation.h>
 #import <VideoToolbox/VideoToolbox.h>
-#import <stdexcept>
 
 #import "RenderingPipeline.h"
-#import "decode_render.h"
 
-#include "nalu_rewriter.h"
+using namespace fast;
 
 PlayerStatistics::PlayerStatistics() : m_index(0), m_currentFrame({0, 0, 0}) {
 }
@@ -37,9 +38,10 @@ void PlayerStatistics::endRendering() {
     m_currentFrame.renderingTime = 1.0e-3 * std::chrono::duration_cast<std::chrono::microseconds>(delta).count();
 }
 
-std::vector<FrameStatistics> PlayerStatistics::getFrameStatistics() {
+std::vector<FrameStatistics> PlayerStatistics::getFrameStatistics() const {
     return m_frames;
 }
+
 struct DecodeRender::Context {
     CMMemoryPoolRef memoryPool;
     VTDecompressionSessionRef decompressionSession;
@@ -49,12 +51,17 @@ struct DecodeRender::Context {
 
     PlayerStatistics statistics;
 
-    Context() : decompressionSession(NULL) { }
+    Context() : memoryPool(NULL), decompressionSession(NULL) { }
 
     ~Context() {
         if (decompressionSession) {
             VTDecompressionSessionInvalidate(decompressionSession);
             CFRelease(decompressionSession);
+        }
+
+        if (memoryPool) {
+            CMMemoryPoolInvalidate(memoryPool);
+            CFRelease(memoryPool);
         }
     }
 
@@ -73,7 +80,7 @@ struct DecodeRender::Context {
     );
 };
 
-std::vector<FrameStatistics> DecodeRender::getFrameStatistics() {
+std::vector<FrameStatistics> DecodeRender::getFrameStatistics() const {
     return m_context->statistics.getFrameStatistics();
 }
 
