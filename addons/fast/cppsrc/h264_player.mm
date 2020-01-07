@@ -64,13 +64,13 @@ void MinimalPlayer::play(const std::string& path) {
 
     printf("Number of frames: %lu\n", frames.size());
     // use first frame to initialize decoder session
-    std::unique_ptr<DecodeRender> decodeRender = std::make_unique<DecodeRender>(frames[0].data);
+    std::unique_ptr<DecodeRender> decodeRender = std::make_unique<DecodeRender>();
 
     size_t index = 0;
     bool quit = false;
-    while (!quit && index < frames.size() - 1) {
+    while (!quit && index < frames.size()) {
         decodeRender->sdl_loop();
-        decodeRender->decode_render(frames[++index].data);
+        decodeRender->decode_render(frames[index++].data);
         // manual sync
         usleep(25000);
     }

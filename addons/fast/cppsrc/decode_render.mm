@@ -49,7 +49,6 @@ struct DecodeRender::Context {
     RenderingPipeline *pipeline;
     CMVideoFormatDescriptionRef formatDescription;
     CMVideoDimensions videoDimensions;
-
     PlayerStatistics statistics;
 
     Context() : memoryPool(NULL), decompressionSession(NULL) { }
@@ -85,21 +84,20 @@ std::vector<FrameStatistics> DecodeRender::getFrameStatistics() const {
     return m_context->statistics.getFrameStatistics();
 }
 
-DecodeRender::DecodeRender(std::vector<uint8_t>& frame) : m_context(new Context()) {
-    m_context->setup(frame);
+DecodeRender::DecodeRender() : m_context(new Context()) {
 
     SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
     if (SDL_InitSubSystem(SDL_INIT_VIDEO)) {
         throw std::runtime_error("SDL::InitSubSystem");
     }
 
-    SDL_Window *window = SDL_CreateWindow(
+    window = SDL_CreateWindow(
         "VideoToolbox Decoder" /* title */,
         SDL_WINDOWPOS_CENTERED /* x */,
         SDL_WINDOWPOS_CENTERED /* y */,
-        m_context->videoDimensions.width,
-        m_context->videoDimensions.height,
-        SDL_WINDOW_SHOWN
+        1024,
+        768,
+        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
     );
     if (!window) {
         throw std::runtime_error("SDL::CreateWindow");
@@ -117,7 +115,6 @@ DecodeRender::DecodeRender(std::vector<uint8_t>& frame) : m_context(new Context(
     if (m_context->pipeline == nil) {
         throw std::runtime_error(error.localizedDescription.UTF8String);
     }
-    decode_render_local(frame, true);
 }
 
 void DecodeRender::sdl_loop() {
@@ -138,10 +135,13 @@ void DecodeRender::decode_render(std::vector<uint8_t>& frame) {
     if (frame.size() == 0) {
         return;
     }
-    decode_render_local(frame, false);
-}
-
-void DecodeRender::decode_render_local(std::vector<uint8_t>& frame, bool multiple_nalu) {
+    bool multiple_nalu = first_frame;
+    if (first_frame) {
+        m_context->setup(frame);
+        SDL_SetWindowSize(window, m_context->videoDimensions.width, m_context->videoDimensions.height);
+        SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+        first_frame = false;
+    }
     CMSampleBufferRef sampleBuffer = m_context->create(frame, multiple_nalu);
     if (sampleBuffer == NULL) {
         return;
