@@ -134,6 +134,9 @@ DecodeRender::~DecodeRender() {
 }
 
 void DecodeRender::decode_render(std::vector<uint8_t>& frame) {
+    if (frame.size() == 0) {
+        return;
+    }
     decode_render_local(frame, false);
 }
 
