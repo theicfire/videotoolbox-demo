@@ -33,12 +33,16 @@ bool H264AnnexBBufferToCMSampleBuffer(const uint8_t* annexb_buffer,
                                       CMSampleBufferRef* out_sample_buffer,
                                       CMMemoryPoolRef memory_pool);
 
+bool H264AnnexBBufferToCMSampleBufferSingleNALU(
+    uint8_t* annexb_buffer, size_t annexb_buffer_size,
+    CMVideoFormatDescriptionRef video_format,
+    CMSampleBufferRef* out_sample_buffer);
+
 // Returns a video format description created from the sps/pps information in
 // the Annex B buffer. If there is no such information, nullptr is returned.
 // The caller is responsible for releasing the description.
 CMVideoFormatDescriptionRef CreateVideoFormatDescription(
-    const uint8_t* annexb_buffer,
-    size_t annexb_buffer_size);
+    uint8_t* annexb_buffer, size_t annexb_buffer_size);
 
 // Helper class for reading NALUs from an RTP Annex B buffer.
 class AnnexBBufferReader final {
@@ -67,8 +71,7 @@ class AnnexBBufferReader final {
 
  private:
   // Returns the the next offset that contains NALU data.
-  size_t FindNextNaluHeader(const uint8_t* start,
-                            size_t length,
+  size_t FindNextNaluHeader(const uint8_t* start, size_t length,
                             size_t offset) const;
 
   const uint8_t* const start_;

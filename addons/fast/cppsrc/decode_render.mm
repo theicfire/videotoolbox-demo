@@ -42,6 +42,7 @@ std::vector<FrameStatistics> PlayerStatistics::getFrameStatistics() const {
     return m_frames;
 }
 
+
 struct DecodeRender::Context {
     CMMemoryPoolRef memoryPool;
     VTDecompressionSessionRef decompressionSession;
@@ -65,8 +66,8 @@ struct DecodeRender::Context {
         }
     }
 
-    void setup(const std::vector<uint8_t>& frame);
-    CMSampleBufferRef create(const std::vector<uint8_t>& frame);
+    void setup(std::vector<uint8_t>& frame);
+    CMSampleBufferRef create(std::vector<uint8_t>& frame, bool multiple_nalu);
     void render(CVImageBufferRef imageBuffer);
 
     static void didDecompress(
@@ -84,7 +85,7 @@ std::vector<FrameStatistics> DecodeRender::getFrameStatistics() const {
     return m_context->statistics.getFrameStatistics();
 }
 
-DecodeRender::DecodeRender(const std::vector<uint8_t>& frame) : m_context(new Context()) {
+DecodeRender::DecodeRender(std::vector<uint8_t>& frame) : m_context(new Context()) {
     m_context->setup(frame);
 
     SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
@@ -115,6 +116,7 @@ DecodeRender::DecodeRender(const std::vector<uint8_t>& frame) : m_context(new Co
     if (m_context->pipeline == nil) {
         throw std::runtime_error(error.localizedDescription.UTF8String);
     }
+    decode_render_local(frame, true);
 }
 
 void DecodeRender::sdl_loop() {
@@ -131,8 +133,12 @@ DecodeRender::~DecodeRender() {
     // SDL_Quit();
 }
 
-void DecodeRender::decode_render(const std::vector<uint8_t>& frame) {
-    CMSampleBufferRef sampleBuffer = m_context->create(frame);
+void DecodeRender::decode_render(std::vector<uint8_t>& frame) {
+    decode_render_local(frame, false);
+}
+
+void DecodeRender::decode_render_local(std::vector<uint8_t>& frame, bool multiple_nalu) {
+    CMSampleBufferRef sampleBuffer = m_context->create(frame, multiple_nalu);
     if (sampleBuffer == NULL) {
         return;
     }
@@ -146,7 +152,7 @@ void DecodeRender::decode_render(const std::vector<uint8_t>& frame) {
     CFRelease(sampleBuffer);
 }
 
-void DecodeRender::Context::setup(const std::vector<uint8_t>& frame) {
+void DecodeRender::Context::setup(std::vector<uint8_t>& frame) {
     memoryPool = CMMemoryPoolCreate(NULL);
 
     formatDescription = webrtc::CreateVideoFormatDescription(frame.data(), frame.size());
@@ -180,11 +186,17 @@ void DecodeRender::Context::setup(const std::vector<uint8_t>& frame) {
 
 }
 
-CMSampleBufferRef DecodeRender::Context::create(const std::vector<uint8_t>& frame) {
+CMSampleBufferRef DecodeRender::Context::create(std::vector<uint8_t>& frame, bool multiple_nalu) {
     CMSampleBufferRef sampleBuffer = NULL;
-    if (!webrtc::H264AnnexBBufferToCMSampleBuffer(frame.data(), frame.size(), formatDescription, &sampleBuffer, memoryPool)) {
-        printf("ERROR: webrtc::H264AnnexBBufferToCMSampleBuffer\n");
-        return NULL;
+    if (multiple_nalu) {
+        if (!webrtc::H264AnnexBBufferToCMSampleBuffer(frame.data(), frame.size(), formatDescription, &sampleBuffer, memoryPool)) {
+            printf("ERROR: webrtc::H264AnnexBBufferToCMSampleBuffer\n");
+        }
+    } else {
+        // if (!webrtc::H264AnnexBBufferToCMSampleBuffer(frame.data(), frame.size(), formatDescription, &sampleBuffer, memoryPool)) {
+        if (!webrtc::H264AnnexBBufferToCMSampleBufferSingleNALU(frame.data(), frame.size(), formatDescription, &sampleBuffer)) {
+            printf("ERROR: webrtc::H264AnnexBBufferToCMSampleBuffer\n");
+        }
     }
     return sampleBuffer;
 }
@@ -224,3 +236,6 @@ void DecodeRender::Context::didDecompress(void *decompressionOutputRefCon,
     DecodeRender::Context *context = (DecodeRender::Context *)decompressionOutputRefCon;
     context->render(imageBuffer);
 }
+
+
+

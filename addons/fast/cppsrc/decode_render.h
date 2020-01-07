@@ -34,9 +34,10 @@ namespace fast {
 
   class DecodeRender {
    public:
-    DecodeRender(const std::vector<uint8_t>& frame);
+    DecodeRender(std::vector<uint8_t>& frame);
     ~DecodeRender();
-    void decode_render(const std::vector<uint8_t>& frame);
+    void decode_render(std::vector<uint8_t>& frame);
+    void decode_render_local(std::vector<uint8_t>& frame, bool multiple_nalu);
     void sdl_loop();
     std::vector<FrameStatistics> getFrameStatistics() const;
 

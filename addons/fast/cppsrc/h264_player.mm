@@ -57,7 +57,7 @@ std::vector<FrameEntry> load(const std::string& path) {
 }
 
 void MinimalPlayer::play(const std::string& path) {
-    const auto& frames = load(path);
+    std::vector<FrameEntry> frames = load(path);
     if (frames.empty()) {
         return;
     }
@@ -68,9 +68,9 @@ void MinimalPlayer::play(const std::string& path) {
 
     size_t index = 0;
     bool quit = false;
-    while (!quit && index < frames.size()) {
+    while (!quit && index < frames.size() - 1) {
         decodeRender->sdl_loop();
-        decodeRender->decode_render(frames[index++].data);
+        decodeRender->decode_render(frames[++index].data);
         // manual sync
         usleep(25000);
     }
