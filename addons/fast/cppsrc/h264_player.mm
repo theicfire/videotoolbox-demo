@@ -62,15 +62,35 @@ void MinimalPlayer::play(const std::string& path) {
         return;
     }
 
+    if (SDL_InitSubSystem(SDL_INIT_VIDEO)) {
+        throw std::runtime_error("SDL::InitSubSystem");
+    }
+
+    SDL_Window* window = SDL_CreateWindow(
+        "VideoToolbox Decoder" /* title */,
+        SDL_WINDOWPOS_CENTERED /* x */,
+        SDL_WINDOWPOS_CENTERED /* y */,
+        1024,
+        768,
+        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
+    );
+    if (!window) {
+        throw std::runtime_error("SDL::CreateWindow");
+    }
     printf("Number of frames: %lu\n", frames.size());
     // use first frame to initialize decoder session
-    std::unique_ptr<DecodeRender> decodeRender = std::make_unique<DecodeRender>();
+    std::unique_ptr<DecodeRender> decodeRender = std::make_unique<DecodeRender>(window);
 
     size_t index = 0;
     bool quit = false;
     while (!quit && index < frames.size()) {
-        decodeRender->sdl_loop();
+        SDL_Event e;
+        SDL_PollEvent(&e);
         decodeRender->decode_render(frames[index++].data);
+        if (index == 1) {
+            SDL_SetWindowSize(window, decodeRender->get_width(), decodeRender->get_height());
+            SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+        }
         // manual sync
         usleep(25000);
     }
@@ -83,4 +103,7 @@ void MinimalPlayer::play(const std::string& path) {
         }
         fclose(file);
     }
+
+    SDL_DestroyWindow(window);
+    SDL_Quit();
 }

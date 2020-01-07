@@ -84,24 +84,9 @@ std::vector<FrameStatistics> DecodeRender::getFrameStatistics() const {
     return m_context->statistics.getFrameStatistics();
 }
 
-DecodeRender::DecodeRender() : m_context(new Context()) {
+DecodeRender::DecodeRender(SDL_Window* window) : m_context(new Context()) {
 
     SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
-    if (SDL_InitSubSystem(SDL_INIT_VIDEO)) {
-        throw std::runtime_error("SDL::InitSubSystem");
-    }
-
-    window = SDL_CreateWindow(
-        "VideoToolbox Decoder" /* title */,
-        SDL_WINDOWPOS_CENTERED /* x */,
-        SDL_WINDOWPOS_CENTERED /* y */,
-        1024,
-        768,
-        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
-    );
-    if (!window) {
-        throw std::runtime_error("SDL::CreateWindow");
-    }
 
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
     CAMetalLayer *metalLayer = (__bridge CAMetalLayer *)SDL_RenderGetMetalLayer(renderer);
@@ -117,18 +102,10 @@ DecodeRender::DecodeRender() : m_context(new Context()) {
     }
 }
 
-void DecodeRender::sdl_loop() {
-    SDL_Event e;
-    SDL_PollEvent(&e);
-}
-
 DecodeRender::~DecodeRender() {
     if (m_context) {
         delete m_context;
     }
-    // TODO bring back
-    // SDL_DestroyWindow(window);
-    // SDL_Quit();
 }
 
 void DecodeRender::decode_render(std::vector<uint8_t>& frame) {
@@ -138,8 +115,6 @@ void DecodeRender::decode_render(std::vector<uint8_t>& frame) {
     bool multiple_nalu = first_frame;
     if (first_frame) {
         m_context->setup(frame);
-        SDL_SetWindowSize(window, m_context->videoDimensions.width, m_context->videoDimensions.height);
-        SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
         first_frame = false;
     }
     CMSampleBufferRef sampleBuffer = m_context->create(frame, multiple_nalu);
@@ -154,6 +129,14 @@ void DecodeRender::decode_render(std::vector<uint8_t>& frame) {
     VTDecodeInfoFlags flagOut;
     VTDecompressionSessionDecodeFrame(m_context->decompressionSession, sampleBuffer, flags, NULL, &flagOut);
     CFRelease(sampleBuffer);
+}
+
+int DecodeRender::get_width() {
+    return m_context->videoDimensions.width;
+}
+
+int DecodeRender::get_height() {
+    return m_context->videoDimensions.height;
 }
 
 void DecodeRender::Context::setup(std::vector<uint8_t>& frame) {
