@@ -111,8 +111,9 @@ DecodeRender::DecodeRender(std::vector<uint8_t>& frame) : m_context(new Context(
     // TODO why we destroy renderer here?
     SDL_DestroyRenderer(renderer);
 
+    CGSize frameSize = CGSizeMake(m_context->videoDimensions.width, m_context->videoDimensions.height);
     NSError *error;
-    m_context->pipeline = [[RenderingPipeline alloc] initWithLayer:metalLayer error:&error];
+    m_context->pipeline = [[RenderingPipeline alloc] initWithLayer:metalLayer frameSize:frameSize error:&error];
     if (m_context->pipeline == nil) {
         throw std::runtime_error(error.localizedDescription.UTF8String);
     }
@@ -198,7 +199,7 @@ CMSampleBufferRef DecodeRender::Context::create(std::vector<uint8_t>& frame, boo
     } else {
         // if (!webrtc::H264AnnexBBufferToCMSampleBuffer(frame.data(), frame.size(), formatDescription, &sampleBuffer, memoryPool)) {
         if (!webrtc::H264AnnexBBufferToCMSampleBufferSingleNALU(frame.data(), frame.size(), formatDescription, &sampleBuffer)) {
-            printf("ERROR: webrtc::H264AnnexBBufferToCMSampleBuffer\n");
+            printf("ERROR: webrtc::H264AnnexBBufferToCMSampleBufferSingleNALU\n");
         }
     }
     return sampleBuffer;
