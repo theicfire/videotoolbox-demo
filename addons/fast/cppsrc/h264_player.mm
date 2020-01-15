@@ -70,8 +70,8 @@ void MinimalPlayer::play(const std::string& path) {
         "VideoToolbox Decoder" /* title */,
         SDL_WINDOWPOS_CENTERED /* x */,
         SDL_WINDOWPOS_CENTERED /* y */,
-        1024,
-        768,
+        1920,
+        1080,
         SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
     );
     if (!window) {

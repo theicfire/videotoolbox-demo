@@ -50,6 +50,7 @@ struct DecodeRender::Context {
     CMVideoFormatDescriptionRef formatDescription;
     CMVideoDimensions videoDimensions;
     PlayerStatistics statistics;
+    SDL_Window* window;
 
     Context() : memoryPool(NULL), decompressionSession(NULL) { }
 
@@ -85,21 +86,8 @@ std::vector<FrameStatistics> DecodeRender::getFrameStatistics() const {
 }
 
 DecodeRender::DecodeRender(SDL_Window* window) : m_context(new Context()) {
-
     SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
-
-    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
-    CAMetalLayer *metalLayer = (__bridge CAMetalLayer *)SDL_RenderGetMetalLayer(renderer);
-
-    // TODO why we destroy renderer here?
-    SDL_DestroyRenderer(renderer);
-
-    CGSize frameSize = CGSizeMake(m_context->videoDimensions.width, m_context->videoDimensions.height);
-    NSError *error;
-    m_context->pipeline = [[RenderingPipeline alloc] initWithLayer:metalLayer frameSize:frameSize error:&error];
-    if (m_context->pipeline == nil) {
-        throw std::runtime_error(error.localizedDescription.UTF8String);
-    }
+    m_context->window = window;
 }
 
 DecodeRender::~DecodeRender() {
@@ -148,6 +136,20 @@ void DecodeRender::Context::setup(std::vector<uint8_t>& frame) {
     }
 
     videoDimensions = CMVideoFormatDescriptionGetDimensions(formatDescription);
+
+
+    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
+    CAMetalLayer *metalLayer = (__bridge CAMetalLayer *)SDL_RenderGetMetalLayer(renderer);
+
+    // TODO why we destroy renderer here?
+    SDL_DestroyRenderer(renderer);
+
+    CGSize frameSize = CGSizeMake(videoDimensions.width, videoDimensions.height);
+    NSError *error;
+    pipeline = [[RenderingPipeline alloc] initWithLayer:metalLayer frameSize:frameSize error:&error];
+    if (pipeline == nil) {
+        throw std::runtime_error(error.localizedDescription.UTF8String);
+    }
 
     printf("Video width: %d, height: %d\n", videoDimensions.width, videoDimensions.height);
 
