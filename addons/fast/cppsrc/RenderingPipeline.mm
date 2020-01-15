@@ -136,7 +136,7 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
 }
 
 - (void)dealloc {
-    [super dealloc];
+    [super dealloc]; // TODO not needed, but it stops a warning from the compiler. See https://stackoverflow.com/questions/25377522/super-dealloc-on-arc-subclasses
     if (_textureCache) {
         CFRelease(_textureCache);
         _textureCache = nil;
