@@ -136,6 +136,7 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
 }
 
 - (void)dealloc {
+    [super dealloc];
     if (_textureCache) {
         CFRelease(_textureCache);
         _textureCache = nil;
