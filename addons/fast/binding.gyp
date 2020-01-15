@@ -14,6 +14,7 @@
         "cflags_cc": ["-Wall", "-Wuninitialized"],
         "xcode_settings": {
             "OTHER_CFLAGS": [
+                "-fobjc-arc", # need this to enable ARC
                 "-std=c++17",
                 "-stdlib=libc++",
                 "-Wno-delete-non-virtual-dtor", # TODO cheat. Ignore a warning for now.

@@ -78,31 +78,33 @@ void MinimalPlayer::play(const std::string& path) {
         throw std::runtime_error("SDL::CreateWindow");
     }
     printf("Number of frames: %lu\n", frames.size());
-    // use first frame to initialize decoder session
-    std::unique_ptr<DecodeRender> decodeRender = std::make_unique<DecodeRender>(window);
 
-    size_t index = 0;
-    bool quit = false;
-    while (!quit && index < frames.size()) {
-        SDL_Event e;
-        SDL_PollEvent(&e);
-        decodeRender->decode_render(frames[index++].data);
-        if (index == 1) {
-            SDL_SetWindowSize(window, decodeRender->get_width(), decodeRender->get_height());
-            SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-        }
-        // manual sync
-        usleep(25000);
-    }
+    @autoreleasepool {
+        std::unique_ptr<DecodeRender> decodeRender = std::make_unique<DecodeRender>(window);
 
-    FILE* file = fopen("result.csv", "w");
-    if (file != NULL) {
-        fprintf(file, "frame,decoding,rendering\n");
-        for (const auto& e : decodeRender->getFrameStatistics()) {
-            fprintf(file, "%d,%f,%f\n", e.index, e.decodingTime, e.renderingTime);
+        size_t index = 0;
+        bool quit = false;
+        while (!quit && index < frames.size()) {
+            SDL_Event e;
+            SDL_PollEvent(&e);
+            decodeRender->decode_render(frames[index++].data);
+            if (index == 1) {
+                SDL_SetWindowSize(window, decodeRender->get_width(), decodeRender->get_height());
+                SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+            }
+            // manual sync
+            usleep(25000);
         }
-        fclose(file);
-    }
+
+        FILE* file = fopen("result.csv", "w");
+        if (file != NULL) {
+            fprintf(file, "frame,decoding,rendering\n");
+            for (const auto& e : decodeRender->getFrameStatistics()) {
+                fprintf(file, "%d,%f,%f\n", e.index, e.decodingTime, e.renderingTime);
+            }
+            fclose(file);
+        }
+    };
 
     SDL_DestroyWindow(window);
     SDL_Quit();
