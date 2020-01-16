@@ -189,7 +189,6 @@ void DecodeRender::Context::setup(std::vector<uint8_t>& frame) {
     connectionErrorLayer.contentsScale = metalLayer.contentsScale;
     connectionErrorLayer.contentsGravity = kCAGravityCenter;
     connectionErrorLayer.contents = connectionErrorImage;
-    connectionErrorLayer.hidden = YES;
 
     [metalLayer addSublayer:connectionErrorLayer];    
 }
