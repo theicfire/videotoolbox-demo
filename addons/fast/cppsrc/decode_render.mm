@@ -51,6 +51,7 @@ struct DecodeRender::Context {
     CMVideoDimensions videoDimensions;
     PlayerStatistics statistics;
     SDL_Window* window;
+    CALayer *connectionErrorLayer;
 
     Context() : memoryPool(NULL), decompressionSession(NULL) { }
 
@@ -127,6 +128,10 @@ int DecodeRender::get_height() {
     return m_context->videoDimensions.height;
 }
 
+void DecodeRender::setConnectionErrorVisible(bool visible) {
+    m_context->connectionErrorLayer.hidden = visible ? NO : YES;
+}
+
 void DecodeRender::Context::setup(std::vector<uint8_t>& frame) {
     memoryPool = CMMemoryPoolCreate(NULL);
 
@@ -136,7 +141,6 @@ void DecodeRender::Context::setup(std::vector<uint8_t>& frame) {
     }
 
     videoDimensions = CMVideoFormatDescriptionGetDimensions(formatDescription);
-
 
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
     CAMetalLayer *metalLayer = (__bridge CAMetalLayer *)SDL_RenderGetMetalLayer(renderer);
@@ -173,6 +177,21 @@ void DecodeRender::Context::setup(std::vector<uint8_t>& frame) {
                                  &callBackRecord,
                                  &decompressionSession);
 
+    NSString *fileName = [NSString stringWithFormat:@"poor_connection%dx.bmp", (int)metalLayer.contentsScale];
+    NSImage *connectionErrorImage = [[NSImage alloc] initWithContentsOfFile:fileName];
+    if (connectionErrorImage == nil) {
+        printf("Error: failed to load image: %s\n", fileName.UTF8String);
+        return;
+    }
+
+    connectionErrorLayer = [CALayer layer];
+    connectionErrorLayer.frame = metalLayer.bounds;
+    connectionErrorLayer.contentsScale = metalLayer.contentsScale;
+    connectionErrorLayer.contentsGravity = kCAGravityCenter;
+    connectionErrorLayer.contents = connectionErrorImage;
+    connectionErrorLayer.hidden = YES;
+
+    [metalLayer addSublayer:connectionErrorLayer];    
 }
 
 CMSampleBufferRef DecodeRender::Context::create(std::vector<uint8_t>& frame, bool multiple_nalu) {

@@ -42,6 +42,7 @@ namespace fast {
     void sdl_loop();
     int get_width();
     int get_height();
+    void setConnectionErrorVisible(bool visible);
     std::vector<FrameStatistics> getFrameStatistics() const;
 
    private:

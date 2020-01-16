@@ -72,7 +72,7 @@ void MinimalPlayer::play(const std::string& path) {
         SDL_WINDOWPOS_CENTERED /* y */,
         1920,
         1080,
-        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE
+        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI
     );
     if (!window) {
         throw std::runtime_error("SDL::CreateWindow");
@@ -84,6 +84,7 @@ void MinimalPlayer::play(const std::string& path) {
 
         size_t index = 0;
         bool quit = false;
+        // frames.size()
         while (!quit && index < frames.size()) {
             SDL_Event e;
             SDL_PollEvent(&e);
