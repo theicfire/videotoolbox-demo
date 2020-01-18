@@ -18,7 +18,7 @@ H264Player::H264Player(int width, int height, enum AVPixelFormat pix_fmt)
 
   window = SDL_CreateWindow(
       "Videotoolbox Decoder" /* title */, SDL_WINDOWPOS_CENTERED /* x */,
-      SDL_WINDOWPOS_CENTERED /* y */, width, height, SDL_WINDOW_SHOWN);
+      SDL_WINDOWPOS_CENTERED /* y */, width, height, SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI);
 
   if (!window) {
     std::cerr << "SDL could not create a window." << std::endl;
@@ -26,12 +26,18 @@ H264Player::H264Player(int width, int height, enum AVPixelFormat pix_fmt)
   }
 
   // Make a renderer that is to render to the screen
+  SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
 
-  renderer = SDL_CreateRenderer(window, -1, 0);
+  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
   if (!renderer) {
     std::cerr << "SDL could not create a renderer." << std::endl;
     exit(1);
   }
+
+
+  int o_width = 0, o_height = 0;
+  int ret = SDL_GetRendererOutputSize(renderer, &o_width, &o_height);
+  printf("Got render output size: %d %d\n", o_width, o_height);
 
   // Allocate a place to put YUV image on the screen
 

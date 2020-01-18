@@ -141,8 +141,8 @@ int play_video(std::string filename) {
       int result = avcodec_receive_frame(decoderCtx, frame);
       if (result == 0) {
         frame_num += 1;
-        printf("#%d: Decode took %f ms, ", frame_num,
-               t.getElapsedMilliseconds());
+        //printf("#%d: Decode took %f ms, ", frame_num,
+               //t.getElapsedMilliseconds());
         t.reset();
         player.render(frame);
         printf("render took %f ms\n", t.getElapsedMilliseconds());
