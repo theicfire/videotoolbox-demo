@@ -14,7 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface RenderingPipeline : NSObject
 
-- (instancetype)initWithLayer:(CAMetalLayer *)layer frameSize:(CGSize)frameSize error:(NSError **)error;
+- (instancetype)initWithLayer:(CAMetalLayer *)layer error:(NSError **)error;
 
 - (void)render:(CVPixelBufferRef)frame;
 

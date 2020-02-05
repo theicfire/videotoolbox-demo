@@ -62,13 +62,12 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
     CAMetalLayer *_layer;
     id<MTLDevice> _device;
     id<MTLRenderPipelineState> _state;
-    MTLRenderPassDescriptor *_renderPassDescriptor;
     id<MTLCommandQueue> _commandQueue;
     id<MTLBuffer> _vertexBuffer;
     CVMetalTextureCacheRef _textureCache;
 }
 
-- (instancetype)initWithLayer:(CAMetalLayer *)layer frameSize:(CGSize)frameSize error:(NSError **)error {
+- (instancetype)initWithLayer:(CAMetalLayer *)layer error:(NSError **)error {
     self = [super init];
     if (self) {
         _layer = layer;
@@ -114,18 +113,13 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
             return nil;
         }
 
-        _renderPassDescriptor = [MTLRenderPassDescriptor new];
-        _renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
-        _renderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
-        _renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1.0, 1.0, 1.0, 1.0);
-
         _commandQueue = [_device newCommandQueue];
         if (_commandQueue == nil) {
             *error = [NSError errorWithDomain:@"Pipeline" code:0 userInfo:nil];
             return nil;
         }
 
-        _vertexBuffer = [self createVertexBuffer:frameSize];
+        _vertexBuffer = [_device newBufferWithLength:16 * sizeof(simd_float1) options:0];
 
         if (CVMetalTextureCacheCreate(kCFAllocatorDefault, NULL, _device, NULL, &_textureCache) != kCVReturnSuccess) {
             *error = [NSError errorWithDomain:@"Pipeline" code:0 userInfo:nil];
@@ -178,28 +172,17 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
         return;
     }
 
-    _renderPassDescriptor.colorAttachments[0].texture = drawable.texture;
-    id<MTLRenderCommandEncoder> commandEndoder = [commandBuffer renderCommandEncoderWithDescriptor:_renderPassDescriptor];
+    MTLRenderPassDescriptor *renderPassDescriptor = [MTLRenderPassDescriptor new];
+    renderPassDescriptor.colorAttachments[0].texture = drawable.texture;
+    renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
+    renderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
+    renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1.0, 1.0, 1.0, 1.0);
 
-    [commandEndoder setVertexBuffer:_vertexBuffer offset:0 atIndex:0];
+    id<MTLRenderCommandEncoder> commandEndoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
 
-    [commandEndoder setFragmentTexture:lumaTexture atIndex:0];
-    [commandEndoder setFragmentTexture:chromaTexture atIndex:1];
-
-    [commandEndoder setRenderPipelineState:_state];
-    [commandEndoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
-    [commandEndoder endEncoding];
-
-    [commandBuffer presentDrawable:drawable];
-    [commandBuffer commit];
-
-    // TODO don't need to wait here because it should be enough to sleep in upper loop
-    // [commandBuffer waitUntilCompleted];
-}
-
-- (id<MTLBuffer>)createVertexBuffer:(CGSize)frameSize {
     // Set up the quad vertices with respect to the orientation and aspect ratio of the video.
-    CGRect vertexSamplingRect = AVMakeRectWithAspectRatioInsideRect(frameSize, _layer.bounds);
+    CGSize aspectRatio = CGSizeMake(width, height);
+    CGRect vertexSamplingRect = AVMakeRectWithAspectRatioInsideRect(aspectRatio, _layer.bounds);
 
     // Compute normalized quad coordinates to draw the frame into.
     CGSize normalizedSamplingSize = CGSizeMake(0.0, 0.0);
@@ -238,14 +221,27 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
     simd_float1 u4 = (simd_float1)CGRectGetMaxX(textureSamplingRect);
     simd_float1 v4 = (simd_float1)CGRectGetMinY(textureSamplingRect);
 
-    simd_float1 bytes[] = {
+    simd_float1 vertexData[] = {
         x1, y1, u1, v1,
         x2, y2, u2, v2,
         x3, y3, u3, v3,
         x4, y4, u4, v4
     };
+    memcpy(_vertexBuffer.contents, vertexData, 16 * sizeof(simd_float1));
+    [commandEndoder setVertexBuffer:_vertexBuffer offset:0 atIndex:0];
 
-    return [_device newBufferWithBytes:bytes length:16 * sizeof(simd_float1) options:0];
+    [commandEndoder setFragmentTexture:lumaTexture atIndex:0];
+    [commandEndoder setFragmentTexture:chromaTexture atIndex:1];
+
+    [commandEndoder setRenderPipelineState:_state];
+    [commandEndoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
+    [commandEndoder endEncoding];
+
+    [commandBuffer presentDrawable:drawable];
+    [commandBuffer commit];
+
+    // TODO don't need to wait here because it should be enough to sleep in upper loop
+    // [commandBuffer waitUntilCompleted];
 }
 
 @end

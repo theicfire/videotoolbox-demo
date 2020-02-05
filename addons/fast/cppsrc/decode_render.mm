@@ -88,7 +88,32 @@ std::vector<FrameStatistics> DecodeRender::getFrameStatistics() const {
 
 DecodeRender::DecodeRender(SDL_Window* window) : m_context(new Context()) {
     SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
-    m_context->window = window;
+    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
+    CAMetalLayer *metalLayer = (__bridge CAMetalLayer *)SDL_RenderGetMetalLayer(renderer);
+
+    // TODO why we destroy renderer here?
+    SDL_DestroyRenderer(renderer);
+
+    NSError *error;
+    m_context->pipeline = [[RenderingPipeline alloc] initWithLayer:metalLayer error:&error];
+    if (m_context->pipeline == nil) {
+        throw std::runtime_error(error.localizedDescription.UTF8String);
+    }
+
+    NSString *fileName = [NSString stringWithFormat:@"poor_connection%dx.bmp", (int)metalLayer.contentsScale];
+    NSImage *connectionErrorImage = [[NSImage alloc] initWithContentsOfFile:fileName];
+    if (connectionErrorImage == nil) {
+        printf("Error: failed to load image: %s\n", fileName.UTF8String);
+        return;
+    }
+
+    m_context->connectionErrorLayer = [CALayer layer];
+    m_context->connectionErrorLayer.frame = metalLayer.bounds;
+    m_context->connectionErrorLayer.contentsScale = metalLayer.contentsScale;
+    m_context->connectionErrorLayer.contentsGravity = kCAGravityBottomRight;
+    m_context->connectionErrorLayer.contents = connectionErrorImage;
+
+    [metalLayer addSublayer:m_context->connectionErrorLayer];    
 }
 
 DecodeRender::~DecodeRender() {
@@ -142,19 +167,6 @@ void DecodeRender::Context::setup(std::vector<uint8_t>& frame) {
 
     videoDimensions = CMVideoFormatDescriptionGetDimensions(formatDescription);
 
-    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
-    CAMetalLayer *metalLayer = (__bridge CAMetalLayer *)SDL_RenderGetMetalLayer(renderer);
-
-    // TODO why we destroy renderer here?
-    SDL_DestroyRenderer(renderer);
-
-    CGSize frameSize = CGSizeMake(videoDimensions.width, videoDimensions.height);
-    NSError *error;
-    pipeline = [[RenderingPipeline alloc] initWithLayer:metalLayer frameSize:frameSize error:&error];
-    if (pipeline == nil) {
-        throw std::runtime_error(error.localizedDescription.UTF8String);
-    }
-
     printf("Video width: %d, height: %d\n", videoDimensions.width, videoDimensions.height);
 
     NSDictionary *decoderSpecification = @{
@@ -177,20 +189,6 @@ void DecodeRender::Context::setup(std::vector<uint8_t>& frame) {
                                  &callBackRecord,
                                  &decompressionSession);
 
-    NSString *fileName = [NSString stringWithFormat:@"poor_connection%dx.bmp", (int)metalLayer.contentsScale];
-    NSImage *connectionErrorImage = [[NSImage alloc] initWithContentsOfFile:fileName];
-    if (connectionErrorImage == nil) {
-        printf("Error: failed to load image: %s\n", fileName.UTF8String);
-        return;
-    }
-
-    connectionErrorLayer = [CALayer layer];
-    connectionErrorLayer.frame = metalLayer.bounds;
-    connectionErrorLayer.contentsScale = metalLayer.contentsScale;
-    connectionErrorLayer.contentsGravity = kCAGravityBottomRight;
-    connectionErrorLayer.contents = connectionErrorImage;
-
-    [metalLayer addSublayer:connectionErrorLayer];    
 }
 
 CMSampleBufferRef DecodeRender::Context::create(std::vector<uint8_t>& frame, bool multiple_nalu) {
@@ -202,7 +200,7 @@ CMSampleBufferRef DecodeRender::Context::create(std::vector<uint8_t>& frame, boo
     } else {
         // if (!webrtc::H264AnnexBBufferToCMSampleBuffer(frame.data(), frame.size(), formatDescription, &sampleBuffer, memoryPool)) {
         if (!webrtc::H264AnnexBBufferToCMSampleBufferSingleNALU(frame.data(), frame.size(), formatDescription, &sampleBuffer)) {
-            printf("ERROR: webrtc::H264AnnexBBufferToCMSampleBufferSingleNALU\n");
+            printf("ERROR: webrtc::H264AnnexBBufferToCMSampleBuffer\n");
         }
     }
     return sampleBuffer;
