@@ -39,7 +39,6 @@ namespace fast {
     ~DecodeRender();
     void decode_render(std::vector<uint8_t>& frame);
     void decode_render_local(std::vector<uint8_t>& frame, bool multiple_nalu);
-    void sdl_loop();
     int get_width();
     int get_height();
     void setConnectionErrorVisible(bool visible);
@@ -49,6 +48,5 @@ namespace fast {
     struct Context;
     Context* m_context = nullptr;
     bool first_frame = true;
-    // SDL_Window* window;
   };
 }

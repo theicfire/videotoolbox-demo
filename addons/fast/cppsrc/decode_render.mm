@@ -50,7 +50,6 @@ struct DecodeRender::Context {
     CMVideoFormatDescriptionRef formatDescription;
     CMVideoDimensions videoDimensions;
     PlayerStatistics statistics;
-    SDL_Window* window;
     CALayer *connectionErrorLayer;
 
     Context() : memoryPool(NULL), decompressionSession(NULL) { }
@@ -227,10 +226,10 @@ void DecodeRender::Context::didDecompress(void *decompressionOutputRefCon,
                                     CMTime presentationTimeStamp,
                                     CMTime presentationDuration) {
     if (status != noErr) {
-        // NSLog(@"Error decompressing frame at time: %.3f error: %d infoFlags: %u",
-        //       (float)presentationTimeStamp.value / presentationTimeStamp.timescale,
-        //       (int)status,
-        //       (unsigned int)infoFlags);
+        NSLog(@"Error decompressing frame at time: %.3f error: %d infoFlags: %u",
+              (float)presentationTimeStamp.value / presentationTimeStamp.timescale,
+              (int)status,
+              (unsigned int)infoFlags);
         return;
     }
 
