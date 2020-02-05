@@ -56,6 +56,20 @@ std::vector<FrameEntry> load(const std::string& path) {
     return frames;
 }
 
+void MinimalPlayer::handle_event(SDL_Event &event) {
+  switch (event.type) {
+    case SDL_KEYDOWN: {
+        if (event.key.keysym.sym == 'a') {
+            printf("Hide error banner\n");
+            decodeRender->setConnectionErrorVisible(false);
+        } else if (event.key.keysym.sym == 'b') {
+            printf("Show error banner\n");
+            decodeRender->setConnectionErrorVisible(true);
+        }
+    }
+  }
+}
+
 void MinimalPlayer::play(const std::string& path) {
     std::vector<FrameEntry> frames = load(path);
     if (frames.empty()) {
@@ -80,14 +94,16 @@ void MinimalPlayer::play(const std::string& path) {
     printf("Number of frames: %lu\n", frames.size());
 
     @autoreleasepool {
-        std::unique_ptr<DecodeRender> decodeRender = std::make_unique<DecodeRender>(window);
+        decodeRender = std::make_unique<DecodeRender>(window);
 
         size_t index = 0;
         bool quit = false;
         // frames.size()
         while (!quit && index < frames.size()) {
             SDL_Event e;
-            SDL_PollEvent(&e);
+            if (SDL_PollEvent(&e)) {
+                handle_event(e);
+            }
             decodeRender->decode_render(frames[index++].data);
             if (index == 1) {
                 SDL_SetWindowSize(window, decodeRender->get_width(), decodeRender->get_height());
