@@ -59,12 +59,19 @@ std::vector<FrameEntry> load(const std::string& path) {
 void MinimalPlayer::handle_event(SDL_Event &event) {
   switch (event.type) {
     case SDL_KEYDOWN: {
-        if (event.key.keysym.sym == 'a') {
-            printf("Hide error banner\n");
-            decodeRender->setConnectionErrorVisible(false);
-        } else if (event.key.keysym.sym == 'b') {
-            printf("Show error banner\n");
-            decodeRender->setConnectionErrorVisible(true);
+        if (event.key.keysym.sym == 'h') {
+            if (error_banner_visible) {
+              printf("Hide error banner\n");
+              decodeRender->setConnectionErrorVisible(false);
+              error_banner_visible = false;
+            } else {
+              printf("Show error banner\n");
+              decodeRender->setConnectionErrorVisible(true);
+              error_banner_visible = true;
+            }
+        } else if (event.key.keysym.sym == 'p') {
+            printf("Pause video. TODO make screen white as well.\n");
+            playing = !playing;
         }
     }
   }
@@ -99,10 +106,14 @@ void MinimalPlayer::play(const std::string& path) {
         size_t index = 0;
         bool quit = false;
         // frames.size()
+        playing = true;
         while (!quit && index < frames.size()) {
             SDL_Event e;
             if (SDL_PollEvent(&e)) {
                 handle_event(e);
+            }
+            if (!playing) {
+              continue;
             }
             decodeRender->decode_render(frames[index++].data);
             if (index == 1) {
