@@ -17,6 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)initWithLayer:(CAMetalLayer *)layer error:(NSError **)error;
 
 - (void)render:(CVPixelBufferRef)frame;
+- (void)renderBlank;
 
 @end
 

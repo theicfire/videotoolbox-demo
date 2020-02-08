@@ -144,6 +144,10 @@ void DecodeRender::decode_render(std::vector<uint8_t>& frame) {
     CFRelease(sampleBuffer);
 }
 
+void DecodeRender::render_blank() {
+    [m_context->pipeline renderBlank];
+}
+
 int DecodeRender::get_width() {
     return m_context->videoDimensions.width;
 }

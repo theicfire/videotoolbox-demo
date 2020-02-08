@@ -244,4 +244,29 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
     // [commandBuffer waitUntilCompleted];
 }
 
+- (void)renderBlank {
+    id<CAMetalDrawable> drawable = _layer.nextDrawable;
+    if (drawable == nil) {
+        // NSLog(@"Error: drawable is nil");
+        return;
+    }
+
+    id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
+    if (commandBuffer == nil) {
+        return;
+    }
+
+    MTLRenderPassDescriptor *renderPassDescriptor = [MTLRenderPassDescriptor new];
+    renderPassDescriptor.colorAttachments[0].texture = drawable.texture;
+    renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
+    renderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
+    renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1.0, 1.0, 1.0, 1.0);
+
+    id<MTLRenderCommandEncoder> commandEndoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
+    [commandEndoder endEncoding];
+
+    [commandBuffer presentDrawable:drawable];
+    [commandBuffer commit];
+}
+
 @end

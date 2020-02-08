@@ -72,6 +72,10 @@ void MinimalPlayer::handle_event(SDL_Event &event) {
         } else if (event.key.keysym.sym == 'p') {
             printf("Pause video. TODO make screen white as well.\n");
             playing = !playing;
+            if (!playing) {
+                // do this only once for pause
+                decodeRender->render_blank();
+            }
         }
     }
   }
