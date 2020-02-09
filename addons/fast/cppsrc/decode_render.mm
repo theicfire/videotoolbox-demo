@@ -242,7 +242,9 @@ void DecodeRender::Context::didDecompress(void *decompressionOutputRefCon,
     }
 
     DecodeRender::Context *context = (DecodeRender::Context *)decompressionOutputRefCon;
-    context->render(imageBuffer);
+    @autoreleasepool {
+        context->render(imageBuffer);
+    };
 }
 
 

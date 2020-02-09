@@ -66,6 +66,7 @@ bool H264AnnexBBufferToCMSampleBufferSingleNALU(
   //   NSLog(@"\t\t SampleBufferCreate: \t %@",
   //         (status == noErr) ? @"successful!" : @"failed...");
 
+  CFRelease(blockBuffer);
   if (status != noErr) {
     // NSLog(@"Got an error here");
     return false;
