@@ -16,8 +16,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (instancetype)initWithLayer:(CAMetalLayer *)layer error:(NSError **)error;
 
-- (void)render:(CVPixelBufferRef)frame;
-- (void)renderBlank;
+- (void)render:(CVPixelBufferRef __nullable)frame semaphore:(dispatch_semaphore_t)semaphore;
 
 @end
 

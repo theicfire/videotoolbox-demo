@@ -44,6 +44,7 @@ std::vector<FrameStatistics> PlayerStatistics::getFrameStatistics() const {
 
 
 struct DecodeRender::Context {
+    dispatch_semaphore_t semaphore;
     CMMemoryPoolRef memoryPool;
     VTDecompressionSessionRef decompressionSession;
     RenderingPipeline *pipeline;
@@ -52,7 +53,9 @@ struct DecodeRender::Context {
     PlayerStatistics statistics;
     CALayer *connectionErrorLayer;
 
-    Context() : memoryPool(NULL), decompressionSession(NULL) { }
+    Context() : memoryPool(NULL), decompressionSession(NULL) {
+        semaphore = dispatch_semaphore_create(1);
+    }
 
     ~Context() {
         if (decompressionSession) {
@@ -125,13 +128,18 @@ void DecodeRender::decode_render(std::vector<uint8_t>& frame) {
     if (frame.size() == 0) {
         return;
     }
+
     bool multiple_nalu = first_frame;
     if (first_frame) {
         m_context->setup(frame);
         first_frame = false;
     }
+
+    dispatch_semaphore_wait(m_context->semaphore, DISPATCH_TIME_FOREVER);
+
     CMSampleBufferRef sampleBuffer = m_context->create(frame, multiple_nalu);
     if (sampleBuffer == NULL) {
+        dispatch_semaphore_signal(m_context->semaphore);
         return;
     }
 
@@ -145,7 +153,9 @@ void DecodeRender::decode_render(std::vector<uint8_t>& frame) {
 }
 
 void DecodeRender::render_blank() {
-    [m_context->pipeline renderBlank];
+    dispatch_semaphore_wait(m_context->semaphore, DISPATCH_TIME_FOREVER);
+
+    [m_context->pipeline render:NULL semaphore:m_context->semaphore];
 }
 
 int DecodeRender::get_width() {
@@ -213,7 +223,7 @@ void DecodeRender::Context::render(CVImageBufferRef imageBuffer) {
     statistics.endDecoding();
 
     statistics.startRendering();
-    [pipeline render:imageBuffer];
+    [pipeline render:imageBuffer semaphore:semaphore];
     statistics.endRendering();
 
     statistics.endFrame();
@@ -229,19 +239,22 @@ void DecodeRender::Context::didDecompress(void *decompressionOutputRefCon,
                                     CVImageBufferRef imageBuffer,
                                     CMTime presentationTimeStamp,
                                     CMTime presentationDuration) {
+    DecodeRender::Context *context = (DecodeRender::Context *)decompressionOutputRefCon;
+
     if (status != noErr) {
         NSLog(@"Error decompressing frame at time: %.3f error: %d infoFlags: %u",
               (float)presentationTimeStamp.value / presentationTimeStamp.timescale,
               (int)status,
               (unsigned int)infoFlags);
+        dispatch_semaphore_signal(context->semaphore);
         return;
     }
 
     if (imageBuffer == NULL) {
+        dispatch_semaphore_signal(context->semaphore);
         return;
     }
 
-    DecodeRender::Context *context = (DecodeRender::Context *)decompressionOutputRefCon;
     @autoreleasepool {
         context->render(imageBuffer);
     };

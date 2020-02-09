@@ -57,6 +57,25 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
     }
 );
 
+class SignalGuard {
+public:
+    explicit SignalGuard(dispatch_semaphore_t semaphore) : m_semaphore(semaphore), m_needSignal(true) { }
+
+    ~SignalGuard() {
+        if (m_needSignal) {
+            dispatch_semaphore_signal(m_semaphore);
+        }
+    }
+
+    void remove() {
+        m_needSignal = false;
+    }
+
+private:
+    dispatch_semaphore_t m_semaphore;
+    bool m_needSignal;
+};
+
 @implementation RenderingPipeline
 {
     CAMetalLayer *_layer;
@@ -65,6 +84,8 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
     id<MTLCommandQueue> _commandQueue;
     id<MTLBuffer> _vertexBuffer;
     CVMetalTextureCacheRef _textureCache;
+    id<MTLTexture> _lumaTexture;
+    id<MTLTexture> _chromaTexture;
 }
 
 - (instancetype)initWithLayer:(CAMetalLayer *)layer error:(NSError **)error {
@@ -136,14 +157,57 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
     }
 }
 
-- (void)render:(CVPixelBufferRef)frame {
+- (void)render:(CVPixelBufferRef)frame semaphore:(dispatch_semaphore_t)semaphore {
+    SignalGuard guard(semaphore);
+
+    if (frame != NULL && ![self setupTexturesForFrame:frame]) {
+        return;
+    }
+
+    id<CAMetalDrawable> drawable = _layer.nextDrawable;
+    if (drawable == nil) {
+        return;
+    }
+
+    id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
+    if (commandBuffer == nil) {
+        return;
+    }
+
+    guard.remove();
+
+    __block dispatch_semaphore_t blockSemaphore = semaphore;
+    [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull) {
+        // GPU work completed.
+        dispatch_semaphore_signal(blockSemaphore);
+    }];
+
+    MTLRenderPassDescriptor *renderPassDescriptor = [MTLRenderPassDescriptor new];
+    renderPassDescriptor.colorAttachments[0].texture = drawable.texture;
+    renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
+    renderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
+    renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1.0, 1.0, 1.0, 1.0);
+
+    id<MTLRenderCommandEncoder> commandEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
+
+    if (frame != NULL) {
+        [self setupEncoder:commandEncoder forFrame:frame];
+    }
+
+    [commandEncoder endEncoding];
+
+    [commandBuffer presentDrawable:drawable];
+    [commandBuffer commit];
+}
+
+- (BOOL)setupTexturesForFrame:(CVPixelBufferRef)frame {
     int width = (int)CVPixelBufferGetWidth(frame);
     int height = (int)CVPixelBufferGetHeight(frame);
 
     CVMetalTextureRef texture = NULL;
     CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, _textureCache, frame, NULL, MTLPixelFormatR8Unorm, width, height, 0, &texture);
     if (texture == NULL) {
-        return;
+        return NO;
     }
 
     id<MTLTexture> lumaTexture = CVMetalTextureGetTexture(texture);
@@ -153,7 +217,7 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
 
     CVMetalTextureCacheCreateTextureFromImage(kCFAllocatorDefault, _textureCache, frame, NULL, MTLPixelFormatRG8Unorm, width / 2, height / 2, 1, &texture);
     if (texture == NULL) {
-        return;
+        return NO;
     }
 
     id<MTLTexture> chromaTexture = CVMetalTextureGetTexture(texture);
@@ -161,24 +225,18 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
     CFRelease(texture);
     texture = NULL;
 
-    id<CAMetalDrawable> drawable = _layer.nextDrawable;
-    if (drawable == nil) {
-        // NSLog(@"Error: drawable is nil");
-        return;
+    if (lumaTexture != nil && chromaTexture != nil) {
+        _lumaTexture = lumaTexture;
+        _chromaTexture = chromaTexture;
+        return YES;
     }
 
-    id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
-    if (commandBuffer == nil) {
-        return;
-    }
+    return NO;
+}
 
-    MTLRenderPassDescriptor *renderPassDescriptor = [MTLRenderPassDescriptor new];
-    renderPassDescriptor.colorAttachments[0].texture = drawable.texture;
-    renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
-    renderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
-    renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1.0, 1.0, 1.0, 1.0);
-
-    id<MTLRenderCommandEncoder> commandEndoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
+- (void)setupEncoder:(id<MTLRenderCommandEncoder>)commandEncoder forFrame:(CVPixelBufferRef)frame {
+    int width = (int)CVPixelBufferGetWidth(frame);
+    int height = (int)CVPixelBufferGetHeight(frame);
 
     // Set up the quad vertices with respect to the orientation and aspect ratio of the video.
     CGSize aspectRatio = CGSizeMake(width, height);
@@ -199,7 +257,7 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
     }
 
     CGRect textureSamplingRect = CGRectMake(0, 0, 1, 1);
-    
+
     // explicit cast from double to float in Objective C++
     simd_float1 x1 = (simd_float1)(-1 * normalizedSamplingSize.width);
     simd_float1 y1 = (simd_float1)(-1 * normalizedSamplingSize.height);
@@ -228,45 +286,13 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
         x4, y4, u4, v4
     };
     memcpy(_vertexBuffer.contents, vertexData, 16 * sizeof(simd_float1));
-    [commandEndoder setVertexBuffer:_vertexBuffer offset:0 atIndex:0];
+    [commandEncoder setVertexBuffer:_vertexBuffer offset:0 atIndex:0];
 
-    [commandEndoder setFragmentTexture:lumaTexture atIndex:0];
-    [commandEndoder setFragmentTexture:chromaTexture atIndex:1];
+    [commandEncoder setFragmentTexture:_lumaTexture atIndex:0];
+    [commandEncoder setFragmentTexture:_chromaTexture atIndex:1];
 
-    [commandEndoder setRenderPipelineState:_state];
-    [commandEndoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
-    [commandEndoder endEncoding];
-
-    [commandBuffer presentDrawable:drawable];
-    [commandBuffer commit];
-
-    // TODO don't need to wait here because it should be enough to sleep in upper loop
-    // [commandBuffer waitUntilCompleted];
-}
-
-- (void)renderBlank {
-    id<CAMetalDrawable> drawable = _layer.nextDrawable;
-    if (drawable == nil) {
-        // NSLog(@"Error: drawable is nil");
-        return;
-    }
-
-    id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
-    if (commandBuffer == nil) {
-        return;
-    }
-
-    MTLRenderPassDescriptor *renderPassDescriptor = [MTLRenderPassDescriptor new];
-    renderPassDescriptor.colorAttachments[0].texture = drawable.texture;
-    renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
-    renderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
-    renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1.0, 1.0, 1.0, 1.0);
-
-    id<MTLRenderCommandEncoder> commandEndoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
-    [commandEndoder endEncoding];
-
-    [commandBuffer presentDrawable:drawable];
-    [commandBuffer commit];
+    [commandEncoder setRenderPipelineState:_state];
+    [commandEncoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
 }
 
 @end

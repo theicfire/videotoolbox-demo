@@ -70,10 +70,10 @@ void MinimalPlayer::handle_event(SDL_Event &event) {
               error_banner_visible = true;
             }
         } else if (event.key.keysym.sym == 'p') {
-            printf("Pause video. TODO make screen white as well.\n");
+            printf("Pause video\n");
             playing = !playing;
             if (!playing) {
-                // do this only once for pause
+                // IMPORTANT do this only once for pause
                 decodeRender->render_blank();
             }
         }
@@ -124,8 +124,6 @@ void MinimalPlayer::play(const std::string& path) {
                 SDL_SetWindowSize(window, decodeRender->get_width(), decodeRender->get_height());
                 SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
             }
-            // manual sync
-            usleep(25000);
         }
 
         FILE* file = fopen("result.csv", "w");
