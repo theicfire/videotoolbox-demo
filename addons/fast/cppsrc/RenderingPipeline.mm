@@ -57,25 +57,6 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
     }
 );
 
-class SignalGuard {
-public:
-    explicit SignalGuard(dispatch_semaphore_t semaphore) : m_semaphore(semaphore), m_needSignal(true) { }
-
-    ~SignalGuard() {
-        if (m_needSignal) {
-            dispatch_semaphore_signal(m_semaphore);
-        }
-    }
-
-    void remove() {
-        m_needSignal = false;
-    }
-
-private:
-    dispatch_semaphore_t m_semaphore;
-    bool m_needSignal;
-};
-
 @implementation RenderingPipeline
 {
     CAMetalLayer *_layer;
@@ -157,29 +138,26 @@ private:
     }
 }
 
-- (void)render:(CVPixelBufferRef)frame semaphore:(dispatch_semaphore_t)semaphore {
-    SignalGuard guard(semaphore);
-
+- (BOOL)render:(CVPixelBufferRef)frame {
     if (frame != NULL && ![self setupTexturesForFrame:frame]) {
-        return;
+        return NO;
     }
 
     id<CAMetalDrawable> drawable = _layer.nextDrawable;
     if (drawable == nil) {
-        return;
+        return NO;
     }
 
     id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
     if (commandBuffer == nil) {
-        return;
+        return NO;
     }
 
-    guard.remove();
-
-    __block dispatch_semaphore_t blockSemaphore = semaphore;
+    __weak RenderingPipeline *weakSelf = self;
     [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull) {
-        // GPU work completed.
-        dispatch_semaphore_signal(blockSemaphore);
+        if (weakSelf.completedHandler) {
+            weakSelf.completedHandler();
+        }
     }];
 
     MTLRenderPassDescriptor *renderPassDescriptor = [MTLRenderPassDescriptor new];
@@ -198,6 +176,8 @@ private:
 
     [commandBuffer presentDrawable:drawable];
     [commandBuffer commit];
+
+    return YES;
 }
 
 - (BOOL)setupTexturesForFrame:(CVPixelBufferRef)frame {

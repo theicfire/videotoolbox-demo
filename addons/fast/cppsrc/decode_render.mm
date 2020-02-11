@@ -102,6 +102,10 @@ DecodeRender::DecodeRender(SDL_Window* window) : m_context(new Context()) {
         throw std::runtime_error(error.localizedDescription.UTF8String);
     }
 
+    m_context->pipeline.completedHandler = ^{
+        dispatch_semaphore_signal(m_context->semaphore);
+    };
+
     NSString *fileName = [NSString stringWithFormat:@"poor_connection%dx.bmp", (int)metalLayer.contentsScale];
     NSImage *connectionErrorImage = [[NSImage alloc] initWithContentsOfFile:fileName];
     if (connectionErrorImage == nil) {
@@ -155,7 +159,9 @@ void DecodeRender::decode_render(std::vector<uint8_t>& frame) {
 void DecodeRender::render_blank() {
     dispatch_semaphore_wait(m_context->semaphore, DISPATCH_TIME_FOREVER);
 
-    [m_context->pipeline render:NULL semaphore:m_context->semaphore];
+    if (![m_context->pipeline render:NULL]) {
+        dispatch_semaphore_signal(m_context->semaphore);
+    }
 }
 
 int DecodeRender::get_width() {
@@ -211,7 +217,6 @@ CMSampleBufferRef DecodeRender::Context::create(std::vector<uint8_t>& frame, boo
             printf("ERROR: webrtc::H264AnnexBBufferToCMSampleBuffer\n");
         }
     } else {
-        // if (!webrtc::H264AnnexBBufferToCMSampleBuffer(frame.data(), frame.size(), formatDescription, &sampleBuffer, memoryPool)) {
         if (!webrtc::H264AnnexBBufferToCMSampleBufferSingleNALU(frame.data(), frame.size(), formatDescription, &sampleBuffer)) {
             printf("ERROR: webrtc::H264AnnexBBufferToCMSampleBuffer\n");
         }
@@ -223,7 +228,9 @@ void DecodeRender::Context::render(CVImageBufferRef imageBuffer) {
     statistics.endDecoding();
 
     statistics.startRendering();
-    [pipeline render:imageBuffer semaphore:semaphore];
+    if (![pipeline render:imageBuffer]) {
+        dispatch_semaphore_signal(semaphore);
+    }
     statistics.endRendering();
 
     statistics.endFrame();
