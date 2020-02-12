@@ -10,6 +10,7 @@ namespace fast {
 class MinimalPlayer {
  std::unique_ptr<DecodeRender> decodeRender = nullptr;
  bool playing = false;
+ bool restarting = false;
  bool error_banner_visible = true;
  public:
   void play(const std::string& path);

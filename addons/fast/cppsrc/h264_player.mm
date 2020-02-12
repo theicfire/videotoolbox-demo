@@ -76,6 +76,9 @@ void MinimalPlayer::handle_event(SDL_Event &event) {
                 // IMPORTANT do this only once for pause
                 decodeRender->render_blank();
             }
+        } else if (event.key.keysym.sym == 'r') {
+            playing = true;
+            restarting = true;
         }
     }
   }
@@ -117,6 +120,16 @@ void MinimalPlayer::play(const std::string& path) {
                 handle_event(e);
             }
             if (!playing) {
+              continue;
+            }
+            if (restarting) {
+              printf("Restarting\n");
+              decodeRender = nullptr;
+              printf("Done deleting\n");
+              decodeRender = std::make_unique<DecodeRender>(window);
+              printf("Created new DecodeRender\n");
+              index = 0;
+              restarting = false;
               continue;
             }
             decodeRender->decode_render(frames[index++].data);
