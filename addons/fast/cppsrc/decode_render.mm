@@ -54,7 +54,10 @@ struct DecodeRender::Context {
     CALayer *connectionErrorLayer;
 
     Context() : memoryPool(NULL), decompressionSession(NULL) {
-        semaphore = dispatch_semaphore_create(1);
+        // Deconstructor requires semaphore to be at least the starting value. So we make the starting value 0.
+        // Otherwise, we get EXC_BAD_INSTRUCTION
+        semaphore = dispatch_semaphore_create(0);
+        dispatch_semaphore_signal(semaphore);
     }
 
     ~Context() {
