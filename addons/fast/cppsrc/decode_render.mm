@@ -133,13 +133,13 @@ void DecodeRender::decode_render(std::vector<uint8_t>& frame) {
         return;
     }
 
+    dispatch_semaphore_wait(m_context->semaphore, DISPATCH_TIME_FOREVER);
+
     bool multiple_nalu = first_frame;
     if (first_frame) {
         m_context->setup(frame);
         first_frame = false;
     }
-
-    dispatch_semaphore_wait(m_context->semaphore, DISPATCH_TIME_FOREVER);
 
     CMSampleBufferRef sampleBuffer = m_context->create(frame, multiple_nalu);
     if (sampleBuffer == NULL) {
