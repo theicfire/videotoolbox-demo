@@ -103,7 +103,7 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
         vertexDescriptor.attributes[1].offset = 2 * sizeof(simd_float1);
         vertexDescriptor.attributes[1].bufferIndex = 0;
         vertexDescriptor.layouts[0].stride = 4 * sizeof(simd_float1);
-        // TODO why we need this cast in Objective C++?
+        // Why we need this cast in Objective C++?
         vertexDescriptor.layouts[0].stepFunction = (MTLVertexStepFunction)MTLStepFunctionPerVertex;
         vertexDescriptor.layouts[0].stepRate = 1;
 
