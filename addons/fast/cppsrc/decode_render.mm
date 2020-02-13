@@ -53,17 +53,23 @@ struct DecodeRender::Context {
     PlayerStatistics statistics;
     CALayer *connectionErrorLayer;
 
-    Context() : memoryPool(NULL), decompressionSession(NULL) {
-        // Deconstructor requires semaphore to be at least the starting value. So we make the starting value 0.
-        // Otherwise, we get EXC_BAD_INSTRUCTION
-        semaphore = dispatch_semaphore_create(0);
-        dispatch_semaphore_signal(semaphore);
+    Context() : semaphore(NULL), memoryPool(NULL), decompressionSession(NULL), formatDescription(NULL) {
+        semaphore = dispatch_semaphore_create(1);
     }
 
     ~Context() {
+        // wait for the current rendering operation to be completed
+        dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
+        // semaphore must have initial value when dispose
+        dispatch_semaphore_signal(semaphore);
+
         if (decompressionSession) {
             VTDecompressionSessionInvalidate(decompressionSession);
             CFRelease(decompressionSession);
+        }
+
+        if (formatDescription) {
+            CFRelease(formatDescription);
         }
 
         if (memoryPool) {

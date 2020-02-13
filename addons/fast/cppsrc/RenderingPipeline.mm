@@ -35,25 +35,19 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
         return output;
     }
 
-    constexpr sampler frame_sampler(coord::normalized, min_filter::linear, mag_filter::linear);
+    constexpr sampler frame_sampler(address::clamp_to_edge, filter::linear);
 
     fragment half4 fragment_shader(ProjectedVertex input [[stage_in]],
                                    texture2d<float, access::sample> luma_texture [[texture(0)]],
                                    texture2d<float, access::sample> chroma_texture [[texture(1)]])
     {
         float y = luma_texture.sample(frame_sampler, input.uv).r;
-        float2 uv1 = chroma_texture.sample(frame_sampler, input.uv).rg;
+        float2 uv = chroma_texture.sample(frame_sampler, input.uv).rg - float2(0.5, 0.5);
 
-        float u = uv1.x;
-        float v = uv1.y;
-        u = u - 0.5;
-        v = v - 0.5;
+        // Conversion for YUV to rgb from http://www.fourcc.org/fccyvrgb.php
+        float4 out = float4(y + 1.403 * uv.y, y - 0.344 * uv.x - 0.714 * uv.y, y + 1.770 * uv.x, 1.0);
 
-        float r = y + 1.403 * v;
-        float g = y - 0.344 * u - 0.714 * v;
-        float b = y + 1.770 * u;
-
-        return half4(float4(r, g, b, 1.0));
+        return half4(out);
     }
 );
 
