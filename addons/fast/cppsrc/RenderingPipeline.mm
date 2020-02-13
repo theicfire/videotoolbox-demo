@@ -41,13 +41,22 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
                                    texture2d<float, access::sample> luma_texture [[texture(0)]],
                                    texture2d<float, access::sample> chroma_texture [[texture(1)]])
     {
+        // Conversion found from https://stackoverflow.com/questions/17892346/how-to-convert-rgb-yuv-rgb-both-ways
+        // I believe this is BT.601
         float y = luma_texture.sample(frame_sampler, input.uv).r;
-        float2 uv = chroma_texture.sample(frame_sampler, input.uv).rg - float2(0.5, 0.5);
+        float2 uv1 = chroma_texture.sample(frame_sampler, input.uv).rg;
 
-        // Conversion for YUV to rgb from http://www.fourcc.org/fccyvrgb.php
-        float4 out = float4(y + 1.403 * uv.y, y - 0.344 * uv.x - 0.714 * uv.y, y + 1.770 * uv.x, 1.0);
+        float u = uv1.x;
+        float v = uv1.y;
+        u = u - 0.5;
+        v = v - 0.5;
+        y = y - .062745; // 16 / 255
 
-        return half4(out);
+        float r = 1.164 * y + 1.596 * v;
+        float g = 1.164 * y - .392 * u - .813 * v;
+        float b = 1.164 * y + 2.017 * u;
+
+        return half4(float4(r, g, b, 1.0));
     }
 );
 
