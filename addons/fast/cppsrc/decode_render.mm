@@ -128,7 +128,7 @@ DecodeRender::DecodeRender(SDL_Window* window) : m_context(new Context()) {
     m_context->connectionErrorLayer.contentsGravity = kCAGravityBottomRight;
     m_context->connectionErrorLayer.contents = connectionErrorImage;
 
-    [metalLayer addSublayer:m_context->connectionErrorLayer];    
+    [metalLayer addSublayer:m_context->connectionErrorLayer];
 }
 
 DecodeRender::~DecodeRender() {
@@ -202,6 +202,7 @@ void DecodeRender::Context::setup(std::vector<uint8_t>& frame) {
     };
 
     NSDictionary *attributes = @{
+        (NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_420YpCbCr8BiPlanarFullRange),
         (NSString *)kCVPixelBufferMetalCompatibilityKey: @(YES),
         (NSString *)kCVPixelBufferIOSurfacePropertiesKey: @{}
     };
