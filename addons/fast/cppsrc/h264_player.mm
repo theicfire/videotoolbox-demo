@@ -27,6 +27,15 @@ struct FrameEntry {
     std::vector<uint8_t> data;
 };
 
+struct InternalLoopContext {
+    std::vector<FrameEntry> frames;
+    size_t index;
+    void *metalLayerPointer;
+    bool quit;
+    Timer t;
+    SDL_Window *window;
+};
+
 @interface MetalView: NSView
 
 @property (nonatomic) CAMetalLayer *metalLayer;
@@ -98,9 +107,9 @@ void MinimalPlayer::handle_event(SDL_Event &event) {
 }
 
 void MinimalPlayer::play(const std::string& path) {
-    Timer t;
-    std::vector<FrameEntry> frames = load(path);
-    if (frames.empty()) {
+    InternalLoopContext context;
+    context.frames = load(path);
+    if (context.frames.empty()) {
         return;
     }
 
@@ -108,7 +117,7 @@ void MinimalPlayer::play(const std::string& path) {
         throw std::runtime_error("SDL::InitSubSystem");
     }
 
-    SDL_Window* window = SDL_CreateWindow(
+    context.window = SDL_CreateWindow(
         "VideoToolbox Decoder" /* title */,
         SDL_WINDOWPOS_CENTERED /* x */,
         SDL_WINDOWPOS_CENTERED /* y */,
@@ -116,17 +125,18 @@ void MinimalPlayer::play(const std::string& path) {
         1080,
         SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI
     );
-    if (!window) {
+    if (!context.window) {
         throw std::runtime_error("SDL::CreateWindow");
     }
 
     SDL_SysWMinfo info;
-    if (!SDL_GetWindowWMInfo(window, &info)) {
+    if (!SDL_GetWindowWMInfo(context.window, &info)) {
         throw std::runtime_error("SDL::GetWindowWMInfo");
     }
 
-    printf("Number of frames: %lu\n", frames.size());
+    printf("Number of frames: %lu\n", context.frames.size());
 
+    // this is out main pool with long lifetime
     @autoreleasepool {
         NSView *view = info.info.cocoa.window.contentView;
 
@@ -141,37 +151,16 @@ void MinimalPlayer::play(const std::string& path) {
             [metalView.rightAnchor constraintEqualToAnchor:view.rightAnchor]
         ]];
 
-        void *metalLayerPointer = (__bridge void *)metalView.metalLayer;
-        decodeRender = std::make_unique<DecodeRender>(metalLayerPointer);
+        context.metalLayerPointer = (__bridge void *)metalView.metalLayer;
+        decodeRender = std::make_unique<DecodeRender>(context.metalLayerPointer);
 
-        size_t index = 0;
-        bool quit = false;
+        context.index = 0;
+        context.quit = false;
         // frames.size()
         playing = true;
-        while (!quit && index < frames.size()) {
-            SDL_Event e;
-            if (SDL_PollEvent(&e)) {
-                handle_event(e);
-            }
-            if (!playing) {
-              continue;
-            }
-            if (restarting || t.getElapsedMilliseconds() > 5000) {
-              printf("Restarting\n");
-              decodeRender = nullptr;
-              printf("Done deleting\n");
-              decodeRender = std::make_unique<DecodeRender>(metalLayerPointer);
-              printf("Created new DecodeRender\n");
-              index = 0;
-              restarting = false;
-              t.reset();
-              continue;
-            }
-            decodeRender->decode_render(frames[index++].data);
-            if (index == 1) {
-                SDL_SetWindowSize(window, decodeRender->get_width(), decodeRender->get_height());
-                SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-            }
+        while (!context.quit) {
+            // keep starting loop
+            internal_loop(&context);
         }
 
         FILE* file = fopen("result.csv", "w");
@@ -184,8 +173,42 @@ void MinimalPlayer::play(const std::string& path) {
         }
     };
 
-    SDL_DestroyWindow(window);
+    SDL_DestroyWindow(context.window);
     SDL_Quit();
+}
+
+// IMPORTANT autorelease pool must be released after each restart, so we use this internal loop function
+void MinimalPlayer::internal_loop(void *context) {
+    InternalLoopContext *p = (InternalLoopContext *)context;
+    // this is out short lifetime pool
+    @autoreleasepool {
+        while (!p->quit && p->index < p->frames.size()) {
+            SDL_Event e;
+            if (SDL_PollEvent(&e)) {
+                handle_event(e);
+            }
+            if (!playing) {
+              continue;
+            }
+            if (restarting || p->t.getElapsedMilliseconds() > 5000) {
+              printf("Restarting\n");
+              decodeRender = nullptr;
+              printf("Done deleting\n");
+              decodeRender = std::make_unique<DecodeRender>(p->metalLayerPointer);
+              printf("Created new DecodeRender\n");
+              p->index = 0;
+              restarting = false;
+              p->t.reset();
+              // IMPORTANT return from loop and trigger autorelease pool to release
+              break;
+            }
+            decodeRender->decode_render(p->frames[p->index++].data);
+            if (p->index == 1) {
+                SDL_SetWindowSize(p->window, decodeRender->get_width(), decodeRender->get_height());
+                SDL_SetWindowPosition(p->window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+            }
+        }
+    };
 }
 
 @implementation MetalView
