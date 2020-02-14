@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include "decode_render.h"
+#include "timer.h"
 
 using namespace fast;
 
@@ -85,6 +86,7 @@ void MinimalPlayer::handle_event(SDL_Event &event) {
 }
 
 void MinimalPlayer::play(const std::string& path) {
+    Timer t;
     std::vector<FrameEntry> frames = load(path);
     if (frames.empty()) {
         return;
@@ -122,7 +124,7 @@ void MinimalPlayer::play(const std::string& path) {
             if (!playing) {
               continue;
             }
-            if (restarting) {
+            if (restarting || t.getElapsedMilliseconds() > 5000) {
               printf("Restarting\n");
               decodeRender = nullptr;
               printf("Done deleting\n");
@@ -130,6 +132,7 @@ void MinimalPlayer::play(const std::string& path) {
               printf("Created new DecodeRender\n");
               index = 0;
               restarting = false;
+              t.reset();
               continue;
             }
             decodeRender->decode_render(frames[index++].data);
