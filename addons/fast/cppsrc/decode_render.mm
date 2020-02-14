@@ -63,6 +63,8 @@ struct DecodeRender::Context {
         // semaphore must have initial value when dispose
         dispatch_semaphore_signal(semaphore);
 
+        [connectionErrorLayer removeFromSuperlayer];
+
         if (decompressionSession) {
             VTDecompressionSessionInvalidate(decompressionSession);
             CFRelease(decompressionSession);
@@ -97,13 +99,8 @@ std::vector<FrameStatistics> DecodeRender::getFrameStatistics() const {
     return m_context->statistics.getFrameStatistics();
 }
 
-DecodeRender::DecodeRender(SDL_Window* window) : m_context(new Context()) {
-    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
-    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
-    CAMetalLayer *metalLayer = (__bridge CAMetalLayer *)SDL_RenderGetMetalLayer(renderer);
-
-    // TODO why we destroy renderer here?
-    SDL_DestroyRenderer(renderer);
+DecodeRender::DecodeRender(void *layer) : m_context(new Context()) {
+    CAMetalLayer *metalLayer = (__bridge CAMetalLayer *)layer;
 
     NSError *error;
     m_context->pipeline = [[RenderingPipeline alloc] initWithLayer:metalLayer error:&error];

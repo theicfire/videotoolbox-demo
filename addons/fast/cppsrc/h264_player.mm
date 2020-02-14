@@ -10,6 +10,12 @@
 #include <dirent.h>
 #include <unistd.h>
 
+#include <SDL2/SDL_syswm.h>
+
+#import <Cocoa/Cocoa.h>
+#import <QuartzCore/CAMetalLayer.h>
+#import <Metal/Metal.h>
+
 #include "decode_render.h"
 #include "timer.h"
 
@@ -20,6 +26,12 @@ struct FrameEntry {
     std::string name;
     std::vector<uint8_t> data;
 };
+
+@interface MetalView: NSView
+
+@property (nonatomic) CAMetalLayer *metalLayer;
+
+@end
 
 std::vector<FrameEntry> load(const std::string& path) {
     DIR *dp = opendir (path.c_str());
@@ -107,10 +119,30 @@ void MinimalPlayer::play(const std::string& path) {
     if (!window) {
         throw std::runtime_error("SDL::CreateWindow");
     }
+
+    SDL_SysWMinfo info;
+    if (!SDL_GetWindowWMInfo(window, &info)) {
+        throw std::runtime_error("SDL::GetWindowWMInfo");
+    }
+
     printf("Number of frames: %lu\n", frames.size());
 
     @autoreleasepool {
-        decodeRender = std::make_unique<DecodeRender>(window);
+        NSView *view = info.info.cocoa.window.contentView;
+
+        MetalView *metalView = [MetalView new];
+        metalView.translatesAutoresizingMaskIntoConstraints = NO;
+        [view addSubview:metalView];
+
+        [NSLayoutConstraint activateConstraints:@[
+            [metalView.topAnchor constraintEqualToAnchor:view.topAnchor],
+            [metalView.bottomAnchor constraintEqualToAnchor:view.bottomAnchor],
+            [metalView.leftAnchor constraintEqualToAnchor:view.leftAnchor],
+            [metalView.rightAnchor constraintEqualToAnchor:view.rightAnchor]
+        ]];
+
+        void *metalLayerPointer = (__bridge void *)metalView.metalLayer;
+        decodeRender = std::make_unique<DecodeRender>(metalLayerPointer);
 
         size_t index = 0;
         bool quit = false;
@@ -128,7 +160,7 @@ void MinimalPlayer::play(const std::string& path) {
               printf("Restarting\n");
               decodeRender = nullptr;
               printf("Done deleting\n");
-              decodeRender = std::make_unique<DecodeRender>(window);
+              decodeRender = std::make_unique<DecodeRender>(metalLayerPointer);
               printf("Created new DecodeRender\n");
               index = 0;
               restarting = false;
@@ -155,3 +187,20 @@ void MinimalPlayer::play(const std::string& path) {
     SDL_DestroyWindow(window);
     SDL_Quit();
 }
+
+@implementation MetalView
+
+- (instancetype)initWithFrame:(NSRect)frameRect {
+    self = [super initWithFrame:frameRect];
+    if (self) {
+        self.metalLayer = [CAMetalLayer layer];
+        self.metalLayer.device = MTLCreateSystemDefaultDevice();
+        self.metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm;
+
+        self.layer = self.metalLayer;
+        self.wantsLayer = YES;
+    }
+    return self;
+}
+
+@end

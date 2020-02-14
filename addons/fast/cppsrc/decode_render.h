@@ -35,7 +35,7 @@ namespace fast {
 
   class DecodeRender {
    public:
-    DecodeRender(SDL_Window* window);
+    DecodeRender(void *layer);
     ~DecodeRender();
     void decode_render(std::vector<uint8_t>& frame);
     void decode_render_local(std::vector<uint8_t>& frame, bool multiple_nalu);
