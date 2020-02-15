@@ -1,10 +1,12 @@
 #include "decode_render.h"
 
 #include <exception>
-#include <SDL2/SDL.h>
 
 #include "nalu_rewriter.h"
 
+#import <Cocoa/Cocoa.h>
+#import <QuartzCore/CAMetalLayer.h>
+#import <Metal/Metal.h>
 #import <AVFoundation/AVFoundation.h>
 #import <VideoToolbox/VideoToolbox.h>
 
@@ -42,8 +44,14 @@ std::vector<FrameStatistics> PlayerStatistics::getFrameStatistics() const {
     return m_frames;
 }
 
+@interface MetalView: NSView
+
+@property (nonatomic) CAMetalLayer *metalLayer;
+
+@end
 
 struct DecodeRender::Context {
+    MetalView *metalView;
     dispatch_semaphore_t semaphore;
     CMMemoryPoolRef memoryPool;
     VTDecompressionSessionRef decompressionSession;
@@ -99,8 +107,22 @@ std::vector<FrameStatistics> DecodeRender::getFrameStatistics() const {
     return m_context->statistics.getFrameStatistics();
 }
 
-DecodeRender::DecodeRender(void *layer) : m_context(new Context()) {
-    CAMetalLayer *metalLayer = (__bridge CAMetalLayer *)layer;
+DecodeRender::DecodeRender(SDL_SysWMinfo *info) : m_context(new Context()) {
+    NSView *view = info->info.cocoa.window.contentView;
+
+    MetalView* metalView = [MetalView new];
+    metalView.translatesAutoresizingMaskIntoConstraints = NO;
+    [view addSubview:metalView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [metalView.topAnchor constraintEqualToAnchor:view.topAnchor],
+        [metalView.bottomAnchor constraintEqualToAnchor:view.bottomAnchor],
+        [metalView.leftAnchor constraintEqualToAnchor:view.leftAnchor],
+        [metalView.rightAnchor constraintEqualToAnchor:view.rightAnchor]
+    ]];
+
+    m_context->metalView = metalView;
+    CAMetalLayer *metalLayer = metalView.metalLayer;
 
     NSError *error;
     m_context->pipeline = [[RenderingPipeline alloc] initWithLayer:metalLayer error:&error];
@@ -130,6 +152,7 @@ DecodeRender::DecodeRender(void *layer) : m_context(new Context()) {
 
 DecodeRender::~DecodeRender() {
     if (m_context) {
+        [m_context->metalView removeFromSuperview];
         delete m_context;
     }
 }
@@ -273,5 +296,19 @@ void DecodeRender::Context::didDecompress(void *decompressionOutputRefCon,
     };
 }
 
+@implementation MetalView
 
+- (instancetype)initWithFrame:(NSRect)frameRect {
+    self = [super initWithFrame:frameRect];
+    if (self) {
+        self.metalLayer = [CAMetalLayer layer];
+        self.metalLayer.device = MTLCreateSystemDefaultDevice();
+        self.metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm;
 
+        self.layer = self.metalLayer;
+        self.wantsLayer = YES;
+    }
+    return self;
+}
+
+@end
