@@ -46,12 +46,6 @@ std::vector<FrameStatistics> PlayerStatistics::getFrameStatistics() const {
     return m_frames;
 }
 
-@interface MetalView: NSView
-
-@property (nonatomic) CAMetalLayer *metalLayer;
-
-@end
-
 struct DecodeRender::Context {
     dispatch_semaphore_t semaphore;
     CMMemoryPoolRef memoryPool;
@@ -108,25 +102,13 @@ std::vector<FrameStatistics> DecodeRender::getFrameStatistics() const {
 }
 
 DecodeRender::DecodeRender(SDL_Window *window) : m_context(new Context()) {
-    SDL_SysWMinfo info;
-    if (!SDL_GetWindowWMInfo(window, &info)) {
-        throw std::runtime_error("SDL::GetWindowWMInfo");
-    }
+    printf("Init DecodeRender\n");
+    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
+    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
+    CAMetalLayer *metalLayer = (__bridge CAMetalLayer *)SDL_RenderGetMetalLayer(renderer);
 
-    NSView *view = info.info.cocoa.window.contentView;
-
-    MetalView* metalView = [MetalView new];
-    metalView.translatesAutoresizingMaskIntoConstraints = NO;
-    [view addSubview:metalView];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [metalView.topAnchor constraintEqualToAnchor:view.topAnchor],
-        [metalView.bottomAnchor constraintEqualToAnchor:view.bottomAnchor],
-        [metalView.leftAnchor constraintEqualToAnchor:view.leftAnchor],
-        [metalView.rightAnchor constraintEqualToAnchor:view.rightAnchor]
-    ]];
-
-    CAMetalLayer *metalLayer = metalView.metalLayer;
+    // TODO why we destroy renderer here?
+    SDL_DestroyRenderer(renderer);
 
     NSError *error;
     m_context->pipeline = [[RenderingPipeline alloc] initWithLayer:metalLayer error:&error];
@@ -319,20 +301,3 @@ void DecodeRender::Context::didDecompress(void *decompressionOutputRefCon,
         context->render(imageBuffer);
     };
 }
-
-@implementation MetalView
-
-- (instancetype)initWithFrame:(NSRect)frameRect {
-    self = [super initWithFrame:frameRect];
-    if (self) {
-        self.metalLayer = [CAMetalLayer layer];
-        self.metalLayer.device = MTLCreateSystemDefaultDevice();
-        self.metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm;
-
-        self.layer = self.metalLayer;
-        self.wantsLayer = YES;
-    }
-    return self;
-}
-
-@end
