@@ -48,6 +48,7 @@ std::vector<FrameStatistics> PlayerStatistics::getFrameStatistics() const {
 
 struct DecodeRender::Context {
     dispatch_semaphore_t semaphore;
+    dispatch_semaphore_t render_semaphore;
     CMMemoryPoolRef memoryPool;
     VTDecompressionSessionRef decompressionSession;
     RenderingPipeline *pipeline;
@@ -58,14 +59,17 @@ struct DecodeRender::Context {
 
     Context() : semaphore(NULL), memoryPool(NULL), decompressionSession(NULL), formatDescription(NULL) {
         semaphore = dispatch_semaphore_create(1);
+        render_semaphore = dispatch_semaphore_create(1);
         memoryPool = CMMemoryPoolCreate(NULL);
     }
 
     ~Context() {
         // wait for the current rendering operation to be completed
         dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
+        dispatch_semaphore_wait(render_semaphore, DISPATCH_TIME_FOREVER);
         // semaphore must have initial value when dispose
         dispatch_semaphore_signal(semaphore);
+        dispatch_semaphore_signal(render_semaphore);
 
         if (decompressionSession) {
             VTDecompressionSessionInvalidate(decompressionSession);
@@ -117,7 +121,7 @@ DecodeRender::DecodeRender(SDL_Window *window) : m_context(new Context()) {
     }
 
     m_context->pipeline.completedHandler = ^{
-        dispatch_semaphore_signal(m_context->semaphore);
+        dispatch_semaphore_signal(m_context->render_semaphore);
     };
 
     NSString *fileName = [NSString stringWithFormat:@"poor_connection%dx.bmp", (int)metalLayer.contentsScale];
@@ -171,10 +175,10 @@ void DecodeRender::decode_render(std::vector<uint8_t>& frame) {
 }
 
 void DecodeRender::render_blank() {
-    dispatch_semaphore_wait(m_context->semaphore, DISPATCH_TIME_FOREVER);
+    dispatch_semaphore_wait(m_context->render_semaphore, DISPATCH_TIME_FOREVER);
 
     if (![m_context->pipeline render:NULL]) {
-        dispatch_semaphore_signal(m_context->semaphore);
+        dispatch_semaphore_signal(m_context->render_semaphore);
     }
 }
 
@@ -264,7 +268,7 @@ void DecodeRender::Context::render(CVImageBufferRef imageBuffer) {
 
     statistics.startRendering();
     if (![pipeline render:imageBuffer]) {
-        dispatch_semaphore_signal(semaphore);
+        dispatch_semaphore_signal(render_semaphore);
     }
     statistics.endRendering();
 
@@ -297,7 +301,14 @@ void DecodeRender::Context::didDecompress(void *decompressionOutputRefCon,
         return;
     }
 
-    @autoreleasepool {
-        context->render(imageBuffer);
-    };
+
+    if (dispatch_semaphore_wait(context->render_semaphore, DISPATCH_TIME_NOW) == 0) {
+        dispatch_semaphore_signal(context->semaphore);
+        @autoreleasepool {
+            context->render(imageBuffer);
+        };
+    } else {
+        printf("Skip render\n");
+        dispatch_semaphore_signal(context->semaphore);
+    }
 }
