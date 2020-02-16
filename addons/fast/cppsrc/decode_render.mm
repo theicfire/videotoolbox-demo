@@ -2,6 +2,8 @@
 
 #include <exception>
 
+#include <SDL2/SDL_syswm.h>
+
 #include "nalu_rewriter.h"
 
 #import <Cocoa/Cocoa.h>
@@ -51,7 +53,6 @@ std::vector<FrameStatistics> PlayerStatistics::getFrameStatistics() const {
 @end
 
 struct DecodeRender::Context {
-    MetalView *metalView;
     dispatch_semaphore_t semaphore;
     CMMemoryPoolRef memoryPool;
     VTDecompressionSessionRef decompressionSession;
@@ -63,6 +64,7 @@ struct DecodeRender::Context {
 
     Context() : semaphore(NULL), memoryPool(NULL), decompressionSession(NULL), formatDescription(NULL) {
         semaphore = dispatch_semaphore_create(1);
+        memoryPool = CMMemoryPoolCreate(NULL);
     }
 
     ~Context() {
@@ -70,8 +72,6 @@ struct DecodeRender::Context {
         dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
         // semaphore must have initial value when dispose
         dispatch_semaphore_signal(semaphore);
-
-        [connectionErrorLayer removeFromSuperlayer];
 
         if (decompressionSession) {
             VTDecompressionSessionInvalidate(decompressionSession);
@@ -107,8 +107,13 @@ std::vector<FrameStatistics> DecodeRender::getFrameStatistics() const {
     return m_context->statistics.getFrameStatistics();
 }
 
-DecodeRender::DecodeRender(SDL_SysWMinfo *info) : m_context(new Context()) {
-    NSView *view = info->info.cocoa.window.contentView;
+DecodeRender::DecodeRender(SDL_Window *window) : m_context(new Context()) {
+    SDL_SysWMinfo info;
+    if (!SDL_GetWindowWMInfo(window, &info)) {
+        throw std::runtime_error("SDL::GetWindowWMInfo");
+    }
+
+    NSView *view = info.info.cocoa.window.contentView;
 
     MetalView* metalView = [MetalView new];
     metalView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -121,7 +126,6 @@ DecodeRender::DecodeRender(SDL_SysWMinfo *info) : m_context(new Context()) {
         [metalView.rightAnchor constraintEqualToAnchor:view.rightAnchor]
     ]];
 
-    m_context->metalView = metalView;
     CAMetalLayer *metalLayer = metalView.metalLayer;
 
     NSError *error;
@@ -152,7 +156,6 @@ DecodeRender::DecodeRender(SDL_SysWMinfo *info) : m_context(new Context()) {
 
 DecodeRender::~DecodeRender() {
     if (m_context) {
-        [m_context->metalView removeFromSuperview];
         delete m_context;
     }
 }
@@ -193,6 +196,29 @@ void DecodeRender::render_blank() {
     }
 }
 
+void DecodeRender::reset() {
+    if (m_context == NULL) {
+        return;
+    }
+
+    dispatch_semaphore_wait(m_context->semaphore, DISPATCH_TIME_FOREVER);
+
+    if (m_context->decompressionSession) {
+        VTDecompressionSessionInvalidate(m_context->decompressionSession);
+        CFRelease(m_context->decompressionSession);
+        m_context->decompressionSession = NULL;
+    }
+
+    if (m_context->formatDescription) {
+        CFRelease(m_context->formatDescription);
+        m_context->formatDescription = NULL;
+    }
+
+    first_frame = true;
+
+    dispatch_semaphore_signal(m_context->semaphore);
+}
+
 int DecodeRender::get_width() {
     return m_context->videoDimensions.width;
 }
@@ -206,8 +232,6 @@ void DecodeRender::setConnectionErrorVisible(bool visible) {
 }
 
 void DecodeRender::Context::setup(std::vector<uint8_t>& frame) {
-    memoryPool = CMMemoryPoolCreate(NULL);
-
     formatDescription = webrtc::CreateVideoFormatDescription(frame.data(), frame.size());
     if (formatDescription == NULL) {
         throw std::runtime_error("webrtc::CreateVideoFormatDescription");
@@ -215,7 +239,7 @@ void DecodeRender::Context::setup(std::vector<uint8_t>& frame) {
 
     videoDimensions = CMVideoFormatDescriptionGetDimensions(formatDescription);
 
-    printf("Video width: %d, height: %d\n", videoDimensions.width, videoDimensions.height);
+    printf("Setup decompression with video width: %d, height: %d\n", videoDimensions.width, videoDimensions.height);
 
     NSDictionary *decoderSpecification = @{
         (NSString *)kVTVideoDecoderSpecification_RequireHardwareAcceleratedVideoDecoder: @(YES)

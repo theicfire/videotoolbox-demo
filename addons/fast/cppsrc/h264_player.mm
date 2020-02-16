@@ -21,15 +21,6 @@ struct FrameEntry {
     std::vector<uint8_t> data;
 };
 
-struct InternalLoopContext {
-    std::vector<FrameEntry> frames;
-    size_t index;
-    bool quit;
-    Timer t;
-    SDL_Window *window;
-    SDL_SysWMinfo info;
-};
-
 std::vector<FrameEntry> load(const std::string& path) {
     DIR *dp = opendir (path.c_str());
     if (dp == NULL) {
@@ -95,9 +86,9 @@ void MinimalPlayer::handle_event(SDL_Event &event) {
 }
 
 void MinimalPlayer::play(const std::string& path) {
-    InternalLoopContext context;
-    context.frames = load(path);
-    if (context.frames.empty()) {
+    Timer t;
+    std::vector<FrameEntry> frames = load(path);
+    if (frames.empty()) {
         return;
     }
 
@@ -105,7 +96,7 @@ void MinimalPlayer::play(const std::string& path) {
         throw std::runtime_error("SDL::InitSubSystem");
     }
 
-    context.window = SDL_CreateWindow(
+    SDL_Window *window = SDL_CreateWindow(
         "VideoToolbox Decoder" /* title */,
         SDL_WINDOWPOS_CENTERED /* x */,
         SDL_WINDOWPOS_CENTERED /* y */,
@@ -113,27 +104,39 @@ void MinimalPlayer::play(const std::string& path) {
         1080,
         SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI
     );
-    if (!context.window) {
+    if (!window) {
         throw std::runtime_error("SDL::CreateWindow");
     }
 
-    if (!SDL_GetWindowWMInfo(context.window, &(context.info))) {
-        throw std::runtime_error("SDL::GetWindowWMInfo");
-    }
+    printf("Number of frames: %lu\n", frames.size());
 
-    printf("Number of frames: %lu\n", context.frames.size());
-
-    // this is out main pool with long lifetime
     @autoreleasepool {
-        decodeRender = std::make_unique<DecodeRender>(&(context.info));
+        decodeRender = std::make_unique<DecodeRender>(window);
 
-        context.index = 0;
-        context.quit = false;
+        size_t index = 0;
+        bool quit = false;
         // frames.size()
         playing = true;
-        while (!context.quit) {
-            // keep starting loop
-            internal_loop(&context);
+        while (!quit && index < frames.size()) {
+            SDL_Event e;
+            if (SDL_PollEvent(&e)) {
+                handle_event(e);
+            }
+            if (!playing) {
+              continue;
+            }
+            if (restarting || t.getElapsedMilliseconds() > 5000) {
+              printf("Restarting\n");
+              decodeRender->reset();
+              index = 0;
+              restarting = false;
+              t.reset();
+            }
+            decodeRender->decode_render(frames[index++].data);
+            if (index == 1) {
+                SDL_SetWindowSize(window, decodeRender->get_width(), decodeRender->get_height());
+                SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+            }
         }
 
         FILE* file = fopen("result.csv", "w");
@@ -146,40 +149,6 @@ void MinimalPlayer::play(const std::string& path) {
         }
     };
 
-    SDL_DestroyWindow(context.window);
+    SDL_DestroyWindow(window);
     SDL_Quit();
-}
-
-// IMPORTANT autorelease pool must be released after each restart, so we use this internal loop function
-void MinimalPlayer::internal_loop(void *context) {
-    InternalLoopContext *p = (InternalLoopContext *)context;
-    // this is out short lifetime pool
-    @autoreleasepool {
-        while (!p->quit && p->index < p->frames.size()) {
-            SDL_Event e;
-            if (SDL_PollEvent(&e)) {
-                handle_event(e);
-            }
-            if (!playing) {
-              continue;
-            }
-            if (restarting || p->t.getElapsedMilliseconds() > 5000) {
-              printf("Restarting\n");
-              decodeRender = nullptr;
-              printf("Done deleting\n");
-              decodeRender = std::make_unique<DecodeRender>(&(p->info));
-              printf("Created new DecodeRender\n");
-              p->index = 0;
-              restarting = false;
-              p->t.reset();
-              // IMPORTANT return from loop and trigger autorelease pool to release
-              break;
-            }
-            decodeRender->decode_render(p->frames[p->index++].data);
-            if (p->index == 1) {
-                SDL_SetWindowSize(p->window, decodeRender->get_width(), decodeRender->get_height());
-                SDL_SetWindowPosition(p->window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-            }
-        }
-    };
 }
