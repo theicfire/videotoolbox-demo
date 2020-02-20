@@ -5,10 +5,12 @@
 #include <SDL2/SDL_syswm.h>
 
 #include "nalu_rewriter.h"
+#include "AAPLRenderer.h"
 
 #import <Cocoa/Cocoa.h>
 #import <QuartzCore/CAMetalLayer.h>
 #import <Metal/Metal.h>
+#import <MetalKit/MetalKit.h>
 #import <AVFoundation/AVFoundation.h>
 #import <VideoToolbox/VideoToolbox.h>
 
@@ -48,28 +50,25 @@ std::vector<FrameStatistics> PlayerStatistics::getFrameStatistics() const {
 
 struct DecodeRender::Context {
     dispatch_semaphore_t semaphore;
-    dispatch_semaphore_t render_semaphore;
     CMMemoryPoolRef memoryPool;
     VTDecompressionSessionRef decompressionSession;
-    RenderingPipeline *pipeline;
     CMVideoFormatDescriptionRef formatDescription;
     CMVideoDimensions videoDimensions;
     PlayerStatistics statistics;
-    CALayer *connectionErrorLayer;
+    MTKView *metalView;
+    NSImageView *connectionErrorView;
+    AAPLRenderer *_renderer;
 
     Context() : semaphore(NULL), memoryPool(NULL), decompressionSession(NULL), formatDescription(NULL) {
         semaphore = dispatch_semaphore_create(1);
-        render_semaphore = dispatch_semaphore_create(1);
         memoryPool = CMMemoryPoolCreate(NULL);
     }
 
     ~Context() {
         // wait for the current rendering operation to be completed
         dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
-        dispatch_semaphore_wait(render_semaphore, DISPATCH_TIME_FOREVER);
         // semaphore must have initial value when dispose
         dispatch_semaphore_signal(semaphore);
-        dispatch_semaphore_signal(render_semaphore);
 
         if (decompressionSession) {
             VTDecompressionSessionInvalidate(decompressionSession);
@@ -105,43 +104,57 @@ std::vector<FrameStatistics> DecodeRender::getFrameStatistics() const {
     return m_context->statistics.getFrameStatistics();
 }
 
-DecodeRender::DecodeRender(SDL_Window *window) : m_context(new Context()) {
-    printf("Init DecodeRender\n");
-    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
-    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
-    CAMetalLayer *metalLayer = (__bridge CAMetalLayer *)SDL_RenderGetMetalLayer(renderer);
+DecodeRender::DecodeRender(SDL_SysWMinfo *info) : m_context(new Context()) {
+    NSView *view = info->info.cocoa.window.contentView;
 
-    // TODO why we destroy renderer here?
-    SDL_DestroyRenderer(renderer);
+    MTKView *metalView = [MTKView new];
+    metalView.translatesAutoresizingMaskIntoConstraints = NO;
+    metalView.device = MTLCreateSystemDefaultDevice();
+    metalView.preferredFramesPerSecond = 60;
+    metalView.autoResizeDrawable = YES;
+    metalView.clearColor = MTLClearColorMake(1.0, 1.0, 1.0, 1.0);
+    printf("make that deligate\n");
+    m_context->_renderer = [[AAPLRenderer alloc] initWithMetalKitView:metalView];
+    metalView.delegate = m_context->_renderer;
+    [view addSubview:metalView];
 
-    NSError *error;
-    m_context->pipeline = [[RenderingPipeline alloc] initWithLayer:metalLayer error:&error];
-    if (m_context->pipeline == nil) {
-        throw std::runtime_error(error.localizedDescription.UTF8String);
-    }
+    [NSLayoutConstraint activateConstraints:@[
+        [metalView.topAnchor constraintEqualToAnchor:view.topAnchor],
+        [metalView.bottomAnchor constraintEqualToAnchor:view.bottomAnchor],
+        [metalView.leftAnchor constraintEqualToAnchor:view.leftAnchor],
+        [metalView.rightAnchor constraintEqualToAnchor:view.rightAnchor]
+    ]];
 
-    m_context->pipeline.completedHandler = ^{
-        dispatch_semaphore_signal(m_context->render_semaphore);
-    };
+    m_context->metalView = metalView;
 
-    NSString *fileName = [NSString stringWithFormat:@"poor_connection%dx.bmp", (int)metalLayer.contentsScale];
+
+    NSString *fileName = [NSString stringWithFormat:@"poor_connection%dx.bmp", (int)metalView.layer.contentsScale];
     NSImage *connectionErrorImage = [[NSImage alloc] initWithContentsOfFile:fileName];
     if (connectionErrorImage == nil) {
         printf("Error: failed to load image: %s\n", fileName.UTF8String);
         return;
     }
 
-    m_context->connectionErrorLayer = [CALayer layer];
-    m_context->connectionErrorLayer.frame = metalLayer.bounds;
-    m_context->connectionErrorLayer.contentsScale = metalLayer.contentsScale;
-    m_context->connectionErrorLayer.contentsGravity = kCAGravityBottomRight;
-    m_context->connectionErrorLayer.contents = connectionErrorImage;
+    NSImageView *errorView = [NSImageView new];
+    errorView.translatesAutoresizingMaskIntoConstraints = NO;
+    errorView.imageAlignment = NSImageAlignBottomRight;
+    errorView.image = connectionErrorImage;
+    [view addSubview:errorView];
 
-    [metalLayer addSublayer:m_context->connectionErrorLayer];
+    [NSLayoutConstraint activateConstraints:@[
+        [errorView.topAnchor constraintEqualToAnchor:view.topAnchor],
+        [errorView.bottomAnchor constraintEqualToAnchor:view.bottomAnchor],
+        [errorView.leftAnchor constraintEqualToAnchor:view.leftAnchor],
+        [errorView.rightAnchor constraintEqualToAnchor:view.rightAnchor]
+    ]];
+
+    m_context->connectionErrorView = errorView;
 }
 
 DecodeRender::~DecodeRender() {
     if (m_context) {
+        [m_context->metalView removeFromSuperview];
+        [m_context->connectionErrorView removeFromSuperview];
         delete m_context;
     }
 }
@@ -175,11 +188,7 @@ void DecodeRender::decode_render(std::vector<uint8_t>& frame) {
 }
 
 void DecodeRender::render_blank() {
-    dispatch_semaphore_wait(m_context->render_semaphore, DISPATCH_TIME_FOREVER);
-
-    if (![m_context->pipeline render:NULL]) {
-        dispatch_semaphore_signal(m_context->render_semaphore);
-    }
+    [m_context->_renderer setImageBuffer:NULL];
 }
 
 void DecodeRender::reset() {
@@ -214,7 +223,7 @@ int DecodeRender::get_height() {
 }
 
 void DecodeRender::setConnectionErrorVisible(bool visible) {
-    m_context->connectionErrorLayer.hidden = visible ? NO : YES;
+    m_context->connectionErrorView.hidden = visible ? NO : YES;
 }
 
 void DecodeRender::Context::setup(std::vector<uint8_t>& frame) {
@@ -264,15 +273,15 @@ CMSampleBufferRef DecodeRender::Context::create(std::vector<uint8_t>& frame, boo
 }
 
 void DecodeRender::Context::render(CVImageBufferRef imageBuffer) {
-    statistics.endDecoding();
+    //statistics.endDecoding();
 
-    statistics.startRendering();
-    if (![pipeline render:imageBuffer]) {
-        dispatch_semaphore_signal(render_semaphore);
-    }
-    statistics.endRendering();
+    //statistics.startRendering();
+    //if (![pipeline render:imageBuffer]) {
+        //dispatch_semaphore_signal(semaphore);
 
-    statistics.endFrame();
+        //statistics.endRendering();
+        //statistics.endFrame();
+    //}
 }
 
 /*
@@ -300,15 +309,6 @@ void DecodeRender::Context::didDecompress(void *decompressionOutputRefCon,
         dispatch_semaphore_signal(context->semaphore);
         return;
     }
-
-
-    if (dispatch_semaphore_wait(context->render_semaphore, DISPATCH_TIME_NOW) == 0) {
-        dispatch_semaphore_signal(context->semaphore);
-        @autoreleasepool {
-            context->render(imageBuffer);
-        };
-    } else {
-        printf("Skip render\n");
-        dispatch_semaphore_signal(context->semaphore);
-    }
+    dispatch_semaphore_signal(context->semaphore);
+    [context->_renderer setImageBuffer:imageBuffer];
 }
