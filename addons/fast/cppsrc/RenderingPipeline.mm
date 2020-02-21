@@ -158,9 +158,11 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
         dispatch_semaphore_signal(_inflight_semaphore);
         return NO;
     }
+    CVBufferRetain(frame);
 
      __block dispatch_semaphore_t block_semaphore = _inflight_semaphore;
       [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull) {
+        CVBufferRelease(frame);
         // GPU work completed.
         dispatch_semaphore_signal(block_semaphore);
       }];
