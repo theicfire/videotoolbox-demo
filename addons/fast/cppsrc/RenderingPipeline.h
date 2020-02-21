@@ -10,13 +10,13 @@
 
 #import <Quartz/Quartz.h>
 
-@class MTKView;
-
 NS_ASSUME_NONNULL_BEGIN
 
 @interface RenderingPipeline : NSObject
 
-- (instancetype)initWithView:(MTKView *)view error:(NSError **)error;
+@property (nonatomic, copy) void (^completedHandler)(void);
+
+- (instancetype)initWithLayer:(CAMetalLayer *)layer error:(NSError **)error;
 
 - (BOOL)render:(CVPixelBufferRef __nullable)frame;
 

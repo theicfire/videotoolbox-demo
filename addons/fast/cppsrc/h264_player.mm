@@ -108,16 +108,10 @@ void MinimalPlayer::play(const std::string& path) {
         throw std::runtime_error("SDL::CreateWindow");
     }
 
-    SDL_SysWMinfo info;
-    SDL_VERSION(&info.version);
-    if (!SDL_GetWindowWMInfo(window, &info)) {
-        throw std::runtime_error("SDL::GetWindowWMInfo");
-    }
-
     printf("Number of frames: %lu\n", frames.size());
 
     @autoreleasepool {
-        decodeRender = std::make_unique<DecodeRender>(&info);
+        decodeRender = std::make_unique<DecodeRender>(window);
 
         size_t index = 0;
         bool quit = false;
@@ -138,19 +132,10 @@ void MinimalPlayer::play(const std::string& path) {
               restarting = false;
               t.reset();
             }
-            //Timer t2;
-            decodeRender->decode_render(frames[index++].data);
             Timer t2;
-            //usleep(4000);
-            while (t2.getElapsedMilliseconds() < 20) {
-              Timer t3;
-              if (SDL_PollEvent(&e)) {
-                  handle_event(e);
-              }
-              //printf("Pollevent took %f\n", t3.getElapsedMilliseconds());
-            }
-
-            //printf("Timer done: %f ms\n", t2.getElapsedMilliseconds());
+            decodeRender->decode_render(frames[index++].data);
+            printf("t2 is %f\n", t2.getElapsedMilliseconds());
+            usleep(20000);
             if (index == 1) {
                 SDL_SetWindowSize(window, decodeRender->get_width(), decodeRender->get_height());
                 SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);

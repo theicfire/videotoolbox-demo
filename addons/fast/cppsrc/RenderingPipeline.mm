@@ -62,7 +62,7 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
 
 @implementation RenderingPipeline
 {
-    MTKView *_view;
+    CAMetalLayer *_layer;
     id<MTLDevice> _device;
     id<MTLRenderPipelineState> _state;
     id<MTLCommandQueue> _commandQueue;
@@ -70,15 +70,13 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
     CVMetalTextureCacheRef _textureCache;
     id<MTLTexture> _lumaTexture;
     id<MTLTexture> _chromaTexture;
-    dispatch_semaphore_t _inflight_semaphore;
 }
 
-- (instancetype)initWithView:(MTKView *)view error:(NSError **)error {
+- (instancetype)initWithLayer:(CAMetalLayer *)layer error:(NSError **)error {
     self = [super init];
     if (self) {
-        _view = view;
-        _device = view.device;
-        _inflight_semaphore = dispatch_semaphore_create(1);
+        _layer = layer;
+        _device = layer.device;
 
         id<MTLLibrary> library = [_device newLibraryWithSource:kShaderSource options:NULL error:error];
         if (library == nil) {
@@ -113,8 +111,7 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
         pipelineDescriptor.vertexFunction = vertexFunction;
         pipelineDescriptor.vertexDescriptor = vertexDescriptor;
         pipelineDescriptor.fragmentFunction = fragmentFunction;
-        pipelineDescriptor.colorAttachments[0].pixelFormat = _view.colorPixelFormat;
-        pipelineDescriptor.depthAttachmentPixelFormat = MTLPixelFormatInvalid;
+        pipelineDescriptor.colorAttachments[0].pixelFormat = layer.pixelFormat;
 
         _state = [_device newRenderPipelineStateWithDescriptor:pipelineDescriptor error:error];
         if (_state == nil) {
@@ -145,38 +142,42 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
 }
 
 - (BOOL)render:(CVPixelBufferRef)frame {
-    if (dispatch_semaphore_wait(_inflight_semaphore, DISPATCH_TIME_NOW) != 0) {
-       return NO;
-    }
     if (frame != NULL && ![self setupTexturesForFrame:frame]) {
-        dispatch_semaphore_signal(_inflight_semaphore);
+        return NO;
+    }
+
+    id<CAMetalDrawable> drawable = _layer.nextDrawable;
+    if (drawable == nil) {
         return NO;
     }
 
     id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
     if (commandBuffer == nil) {
-        dispatch_semaphore_signal(_inflight_semaphore);
         return NO;
     }
 
-     __block dispatch_semaphore_t block_semaphore = _inflight_semaphore;
-      [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull) {
-        // GPU work completed.
-        dispatch_semaphore_signal(block_semaphore);
-      }];
-
-    MTLRenderPassDescriptor *renderPassDescriptor = _view.currentRenderPassDescriptor;
-    if (renderPassDescriptor) {
-        id<MTLRenderCommandEncoder> commandEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
-
-        if (frame != NULL) {
-            [self setupEncoder:commandEncoder forFrame:frame];
+    __weak RenderingPipeline *weakSelf = self;
+    [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull) {
+        if (weakSelf.completedHandler) {
+            weakSelf.completedHandler();
         }
+    }];
 
-        [commandEncoder endEncoding];
-        [commandBuffer presentDrawable:_view.currentDrawable];
+    MTLRenderPassDescriptor *renderPassDescriptor = [MTLRenderPassDescriptor new];
+    renderPassDescriptor.colorAttachments[0].texture = drawable.texture;
+    renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
+    renderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
+    renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1.0, 1.0, 1.0, 1.0);
+
+    id<MTLRenderCommandEncoder> commandEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
+
+    if (frame != NULL) {
+        [self setupEncoder:commandEncoder forFrame:frame];
     }
 
+    [commandEncoder endEncoding];
+
+    [commandBuffer presentDrawable:drawable];
     [commandBuffer commit];
 
     return YES;
@@ -222,12 +223,12 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
 
     // Set up the quad vertices with respect to the orientation and aspect ratio of the video.
     CGSize aspectRatio = CGSizeMake(width, height);
-    CGRect vertexSamplingRect = AVMakeRectWithAspectRatioInsideRect(aspectRatio, _view.bounds);
+    CGRect vertexSamplingRect = AVMakeRectWithAspectRatioInsideRect(aspectRatio, _layer.bounds);
 
     // Compute normalized quad coordinates to draw the frame into.
     CGSize normalizedSamplingSize = CGSizeMake(0.0, 0.0);
-    CGSize cropScaleAmount = CGSizeMake(vertexSamplingRect.size.width / _view.bounds.size.width,
-                                        vertexSamplingRect.size.height / _view.bounds.size.height);
+    CGSize cropScaleAmount = CGSizeMake(vertexSamplingRect.size.width / _layer.bounds.size.width,
+                                        vertexSamplingRect.size.height / _layer.bounds.size.height);
 
     // Normalize the quad vertices.
     if (cropScaleAmount.width > cropScaleAmount.height) {

@@ -3,7 +3,6 @@
 #include <string>
 #include <vector>
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_syswm.h>
 
 namespace fast {
   struct FrameStatistics {
@@ -36,7 +35,7 @@ namespace fast {
 
   class DecodeRender {
    public:
-    DecodeRender(SDL_SysWMinfo *info);
+    DecodeRender(SDL_Window *window);
     ~DecodeRender();
     void decode_render(std::vector<uint8_t>& frame);
     void decode_render_local(std::vector<uint8_t>& frame, bool multiple_nalu);

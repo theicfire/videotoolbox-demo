@@ -29,7 +29,6 @@
             "cppsrc/RenderingPipeline.mm",
             "cppsrc/decode_render.mm",
             "cppsrc/h264_player.mm",
-            "cppsrc/AAPLRenderer.m",
         ],
         "include_dirs": [
             "<!@(node -p \"require('node-addon-api').include\")"
@@ -49,7 +48,6 @@
                     "-framework CoreGraphics",
                     "-framework VideoToolbox",
                     "-framework AVFoundation",
-                    "-framework MetalKit",
                     "/System/Library/Frameworks/ApplicationServices.framework",
                     "<(module_root_dir)/lib/mac/libSDL2.a"
                 ]
