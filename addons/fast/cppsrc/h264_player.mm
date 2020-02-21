@@ -135,7 +135,7 @@ void MinimalPlayer::play(const std::string& path) {
             Timer t2;
             decodeRender->decode_render(frames[index++].data);
             printf("t2 is %f\n", t2.getElapsedMilliseconds());
-            usleep(20000);
+            usleep(4000);
             if (index == 1) {
                 SDL_SetWindowSize(window, decodeRender->get_width(), decodeRender->get_height());
                 SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);

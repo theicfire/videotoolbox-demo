@@ -156,8 +156,10 @@ static NSString *const kShaderSource = MTL_STRINGIFY(
         return NO;
     }
 
+    CVBufferRetain(frame);
     __weak RenderingPipeline *weakSelf = self;
     [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull) {
+        CVBufferRelease(frame);
         if (weakSelf.completedHandler) {
             weakSelf.completedHandler();
         }
