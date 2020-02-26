@@ -232,6 +232,7 @@ void DecodeRender::Context::setup(std::vector<uint8_t>& frame) {
     };
 
     NSDictionary *attributes = @{
+        (NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_420YpCbCr8BiPlanarFullRange),
         (NSString *)kCVPixelBufferMetalCompatibilityKey: @(YES),
         (NSString *)kCVPixelBufferIOSurfacePropertiesKey: @{}
     };
