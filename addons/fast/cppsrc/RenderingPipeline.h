@@ -14,7 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface RenderingPipeline : NSObject
 
-@property (nonatomic, copy) void (^completedHandler)(void);
+@property(nonatomic, copy) void (^completedHandler)(void);
 
 - (instancetype)initWithLayer:(CAMetalLayer *)layer error:(NSError **)error;
 

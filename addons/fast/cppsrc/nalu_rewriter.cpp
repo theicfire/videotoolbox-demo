@@ -16,8 +16,8 @@
 #include <vector>
 typedef signed char BOOL;
 #define YES (BOOL)1
-
-namespace webrtc {
+namespace webrtc
+{
 
 using H264::kAud;
 using H264::kSps;
@@ -28,9 +28,10 @@ using H264::ParseNaluType;
 const size_t kAvccHeaderByteSize = sizeof(uint32_t);
 
 bool H264AnnexBBufferToCMSampleBufferSingleNALU(
-    uint8_t* annexb_buffer, size_t annexb_buffer_size,
+    uint8_t *annexb_buffer, size_t annexb_buffer_size,
     CMVideoFormatDescriptionRef video_format,
-    CMSampleBufferRef* out_sample_buffer) {
+    CMSampleBufferRef *out_sample_buffer)
+{
   CMBlockBufferRef blockBuffer = NULL;
 
   // Convert from AnnexB to AVCC by changing the header
@@ -38,19 +39,20 @@ bool H264AnnexBBufferToCMSampleBufferSingleNALU(
   memcpy(annexb_buffer, &dataLength32, sizeof(uint32_t));
 
   OSStatus status = CMBlockBufferCreateWithMemoryBlock(
-      NULL, annexb_buffer,  // memoryBlock to hold data. If NULL, block will be
-                            // alloc when needed
-      annexb_buffer_size,   // overall length of the mem block in bytes
+      NULL, annexb_buffer, // memoryBlock to hold data. If NULL, block will be
+                           // alloc when needed
+      annexb_buffer_size,  // overall length of the mem block in bytes
       kCFAllocatorNull, NULL,
-      0,                   // offsetToData
-      annexb_buffer_size,  // dataLength of relevant data bytes, starting at
-                           // offsetToData
+      0,                  // offsetToData
+      annexb_buffer_size, // dataLength of relevant data bytes, starting at
+                          // offsetToData
       0, &blockBuffer);
 
   //   NSLog(@"\t\t BlockBufferCreation: \t %@",
   //         (status == kCMBlockBufferNoErr) ? @"successful!" : @"failed...");
 
-  if (status != noErr) {
+  if (status != noErr)
+  {
     // NSLog(@"Got an error here");
     return false;
   }
@@ -68,7 +70,8 @@ bool H264AnnexBBufferToCMSampleBufferSingleNALU(
 
   CFRelease(blockBuffer);
 
-  if (status != noErr) {
+  if (status != noErr)
+  {
     // NSLog(@"Got an error here");
     return false;
   }
@@ -83,30 +86,36 @@ bool H264AnnexBBufferToCMSampleBufferSingleNALU(
   return true;
 }
 
-bool H264AnnexBBufferToCMSampleBuffer(const uint8_t* annexb_buffer,
+bool H264AnnexBBufferToCMSampleBuffer(const uint8_t *annexb_buffer,
                                       size_t annexb_buffer_size,
                                       CMVideoFormatDescriptionRef video_format,
-                                      CMSampleBufferRef* out_sample_buffer,
-                                      CMMemoryPoolRef memory_pool) {
+                                      CMSampleBufferRef *out_sample_buffer,
+                                      CMMemoryPoolRef memory_pool)
+{
   //  RTC_DCHECK(annexb_buffer);
   //  RTC_DCHECK(out_sample_buffer);
   //  RTC_DCHECK(video_format);
   *out_sample_buffer = nullptr;
 
   AnnexBBufferReader reader(annexb_buffer, annexb_buffer_size);
-  if (reader.SeekToNextNaluOfType(kSps)) {
+  if (reader.SeekToNextNaluOfType(kSps))
+  {
     // Buffer contains an SPS NALU - skip it and the following PPS
-    const uint8_t* data;
+    const uint8_t *data;
     size_t data_len;
-    if (!reader.ReadNalu(&data, &data_len)) {
+    if (!reader.ReadNalu(&data, &data_len))
+    {
       //      RTC_LOG(LS_ERROR) << "Failed to read SPS";
       return false;
     }
-    if (!reader.ReadNalu(&data, &data_len)) {
+    if (!reader.ReadNalu(&data, &data_len))
+    {
       //      RTC_LOG(LS_ERROR) << "Failed to read PPS";
       return false;
     }
-  } else {
+  }
+  else
+  {
     // No SPS NALU - start reading from the first NALU in the buffer
     reader.SeekToStart();
   }
@@ -118,35 +127,41 @@ bool H264AnnexBBufferToCMSampleBuffer(const uint8_t* annexb_buffer,
       kCFAllocatorDefault, nullptr, reader.BytesRemaining(), block_allocator,
       nullptr, 0, reader.BytesRemaining(), kCMBlockBufferAssureMemoryNowFlag,
       &block_buffer);
-  if (status != kCMBlockBufferNoErr) {
+  if (status != kCMBlockBufferNoErr)
+  {
     //    RTC_LOG(LS_ERROR) << "Failed to create block buffer.";
     return false;
   }
 
   // Make sure block buffer is contiguous.
   CMBlockBufferRef contiguous_buffer = nullptr;
-  if (!CMBlockBufferIsRangeContiguous(block_buffer, 0, 0)) {
+  if (!CMBlockBufferIsRangeContiguous(block_buffer, 0, 0))
+  {
     status = CMBlockBufferCreateContiguous(kCFAllocatorDefault, block_buffer,
                                            block_allocator, nullptr, 0, 0, 0,
                                            &contiguous_buffer);
-    if (status != noErr) {
+    if (status != noErr)
+    {
       //      RTC_LOG(LS_ERROR) << "Failed to flatten non-contiguous block
       //      buffer: "
       //                        << status;
       CFRelease(block_buffer);
       return false;
     }
-  } else {
+  }
+  else
+  {
     contiguous_buffer = block_buffer;
     block_buffer = nullptr;
   }
 
   // Get a raw pointer into allocated memory.
   size_t block_buffer_size = 0;
-  char* data_ptr = nullptr;
+  char *data_ptr = nullptr;
   status = CMBlockBufferGetDataPointer(contiguous_buffer, 0, nullptr,
                                        &block_buffer_size, &data_ptr);
-  if (status != kCMBlockBufferNoErr) {
+  if (status != kCMBlockBufferNoErr)
+  {
     //    RTC_LOG(LS_ERROR) << "Failed to get block buffer data pointer.";
     CFRelease(contiguous_buffer);
     return false;
@@ -154,12 +169,14 @@ bool H264AnnexBBufferToCMSampleBuffer(const uint8_t* annexb_buffer,
   //  RTC_DCHECK(block_buffer_size == reader.BytesRemaining());
 
   // Write Avcc NALUs into block buffer memory.
-  AvccBufferWriter writer(reinterpret_cast<uint8_t*>(data_ptr),
+  AvccBufferWriter writer(reinterpret_cast<uint8_t *>(data_ptr),
                           block_buffer_size);
-  while (reader.BytesRemaining() > 0) {
-    const uint8_t* nalu_data_ptr = nullptr;
+  while (reader.BytesRemaining() > 0)
+  {
+    const uint8_t *nalu_data_ptr = nullptr;
     size_t nalu_data_size = 0;
-    if (reader.ReadNalu(&nalu_data_ptr, &nalu_data_size)) {
+    if (reader.ReadNalu(&nalu_data_ptr, &nalu_data_size))
+    {
       writer.WriteNalu(nalu_data_ptr, nalu_data_size);
     }
   }
@@ -168,7 +185,8 @@ bool H264AnnexBBufferToCMSampleBuffer(const uint8_t* annexb_buffer,
   status = CMSampleBufferCreate(kCFAllocatorDefault, contiguous_buffer, true,
                                 nullptr, nullptr, video_format, 1, 0, nullptr,
                                 0, nullptr, out_sample_buffer);
-  if (status != noErr) {
+  if (status != noErr)
+  {
     //    RTC_LOG(LS_ERROR) << "Failed to create sample buffer.";
     CFRelease(contiguous_buffer);
     return false;
@@ -178,19 +196,23 @@ bool H264AnnexBBufferToCMSampleBuffer(const uint8_t* annexb_buffer,
 }
 
 CMVideoFormatDescriptionRef CreateVideoFormatDescription(
-    uint8_t* annexb_buffer, size_t annexb_buffer_size) {
-  const uint8_t* param_set_ptrs[2] = {};
+    uint8_t *annexb_buffer, size_t annexb_buffer_size)
+{
+  const uint8_t *param_set_ptrs[2] = {};
   size_t param_set_sizes[2] = {};
   AnnexBBufferReader reader(annexb_buffer, annexb_buffer_size);
   // Skip everyting before the SPS, then read the SPS and PPS
-  if (!reader.SeekToNextNaluOfType(kSps)) {
+  if (!reader.SeekToNextNaluOfType(kSps))
+  {
     return nullptr;
   }
-  if (!reader.ReadNalu(&param_set_ptrs[0], &param_set_sizes[0])) {
+  if (!reader.ReadNalu(&param_set_ptrs[0], &param_set_sizes[0]))
+  {
     //    RTC_LOG(LS_ERROR) << "Failed to read SPS";
     return nullptr;
   }
-  if (!reader.ReadNalu(&param_set_ptrs[1], &param_set_sizes[1])) {
+  if (!reader.ReadNalu(&param_set_ptrs[1], &param_set_sizes[1]))
+  {
     //    RTC_LOG(LS_ERROR) << "Failed to read PPS";
     return nullptr;
   }
@@ -199,16 +221,18 @@ CMVideoFormatDescriptionRef CreateVideoFormatDescription(
   CMVideoFormatDescriptionRef description = nullptr;
   OSStatus status = CMVideoFormatDescriptionCreateFromH264ParameterSets(
       kCFAllocatorDefault, 2, param_set_ptrs, param_set_sizes, 4, &description);
-  if (status != noErr) {
+  if (status != noErr)
+  {
     //    RTC_LOG(LS_ERROR) << "Failed to create video format description.";
     return nullptr;
   }
   return description;
 }
 
-AnnexBBufferReader::AnnexBBufferReader(const uint8_t* annexb_buffer,
+AnnexBBufferReader::AnnexBBufferReader(const uint8_t *annexb_buffer,
                                        size_t length)
-    : start_(annexb_buffer), length_(length) {
+    : start_(annexb_buffer), length_(length)
+{
   //  RTC_DCHECK(annexb_buffer);
   offsets_ = H264::FindNaluIndices(annexb_buffer, length);
   offset_ = offsets_.begin();
@@ -216,14 +240,16 @@ AnnexBBufferReader::AnnexBBufferReader(const uint8_t* annexb_buffer,
 
 AnnexBBufferReader::~AnnexBBufferReader() = default;
 
-bool AnnexBBufferReader::ReadNalu(const uint8_t** out_nalu,
-                                  size_t* out_length) {
+bool AnnexBBufferReader::ReadNalu(const uint8_t **out_nalu,
+                                  size_t *out_length)
+{
   //  RTC_DCHECK(out_nalu);
   //  RTC_DCHECK(out_length);
   *out_nalu = nullptr;
   *out_length = 0;
 
-  if (offset_ == offsets_.end()) {
+  if (offset_ == offsets_.end())
+  {
     return false;
   }
   *out_nalu = start_ + offset_->payload_start_offset;
@@ -232,8 +258,10 @@ bool AnnexBBufferReader::ReadNalu(const uint8_t** out_nalu,
   return true;
 }
 
-size_t AnnexBBufferReader::BytesRemaining() const {
-  if (offset_ == offsets_.end()) {
+size_t AnnexBBufferReader::BytesRemaining() const
+{
+  if (offset_ == offsets_.end())
+  {
     return 0;
   }
   return length_ - offset_->start_offset;
@@ -241,22 +269,28 @@ size_t AnnexBBufferReader::BytesRemaining() const {
 
 void AnnexBBufferReader::SeekToStart() { offset_ = offsets_.begin(); }
 
-bool AnnexBBufferReader::SeekToNextNaluOfType(NaluType type) {
-  for (; offset_ != offsets_.end(); ++offset_) {
-    if (offset_->payload_size < 1) continue;
+bool AnnexBBufferReader::SeekToNextNaluOfType(NaluType type)
+{
+  for (; offset_ != offsets_.end(); ++offset_)
+  {
+    if (offset_->payload_size < 1)
+      continue;
     if (ParseNaluType(*(start_ + offset_->payload_start_offset)) == type)
       return true;
   }
   return false;
 }
-AvccBufferWriter::AvccBufferWriter(uint8_t* const avcc_buffer, size_t length)
-    : start_(avcc_buffer), offset_(0), length_(length) {
+AvccBufferWriter::AvccBufferWriter(uint8_t *const avcc_buffer, size_t length)
+    : start_(avcc_buffer), offset_(0), length_(length)
+{
   //  RTC_DCHECK(avcc_buffer);
 }
 
-bool AvccBufferWriter::WriteNalu(const uint8_t* data, size_t data_size) {
+bool AvccBufferWriter::WriteNalu(const uint8_t *data, size_t data_size)
+{
   // Check if we can write this length of data.
-  if (data_size + kAvccHeaderByteSize > BytesRemaining()) {
+  if (data_size + kAvccHeaderByteSize > BytesRemaining())
+  {
     return false;
   }
   // Write length header, which needs to be big endian.
@@ -271,4 +305,4 @@ bool AvccBufferWriter::WriteNalu(const uint8_t* data, size_t data_size) {
 
 size_t AvccBufferWriter::BytesRemaining() const { return length_ - offset_; }
 
-}  // namespace webrtc
+} // namespace webrtc

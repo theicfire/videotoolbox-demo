@@ -9,38 +9,42 @@
 #include <string>
 
 // Thread safe!
-class Timer {
- private:
+class Timer
+{
+private:
   std::chrono::high_resolution_clock::time_point time;
   std::mutex mmutex;
 
- public:
+public:
   Timer() { this->reset(); }
 
-  void reset() {
+  void reset()
+  {
     std::unique_lock<std::mutex> lck{mmutex};
     this->time = std::chrono::high_resolution_clock::now();
   }
 
-  double getElapsedSeconds() {
+  double getElapsedSeconds()
+  {
     std::unique_lock<std::mutex> lck{mmutex};
     return 1.0e-6 * std::chrono::duration_cast<std::chrono::microseconds>(
                         std::chrono::high_resolution_clock::now() - this->time)
                         .count();
   }
 
-  double getElapsedMilliseconds() {
+  double getElapsedMilliseconds()
+  {
     std::unique_lock<std::mutex> lck{mmutex};
     return 1.0e-3 * std::chrono::duration_cast<std::chrono::microseconds>(
                         std::chrono::high_resolution_clock::now() - this->time)
                         .count();
   }
 
-  unsigned long long getElapsedMicroseconds() {
+  unsigned long long getElapsedMicroseconds()
+  {
     std::unique_lock<std::mutex> lck{mmutex};
     return std::chrono::duration_cast<std::chrono::microseconds>(
                std::chrono::high_resolution_clock::now() - this->time)
         .count();
   }
 };
-

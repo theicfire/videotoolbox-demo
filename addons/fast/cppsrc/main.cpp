@@ -15,14 +15,17 @@
 using namespace std;
 using namespace Napi;
 
-namespace app {
-void StartClientWrapped(const CallbackInfo& info);
-}  // namespace app
+namespace app
+{
+void StartClientWrapped(const CallbackInfo &info);
+} // namespace app
 
-void app::StartClientWrapped(const CallbackInfo& info) {
+void app::StartClientWrapped(const CallbackInfo &info)
+{
   Napi::Env env = info.Env();
 
-  if (info.Length() < 1) {
+  if (info.Length() < 1)
+  {
     Napi::TypeError::New(env, "Wrong number of arguments")
         .ThrowAsJavaScriptException();
     return;
@@ -30,15 +33,18 @@ void app::StartClientWrapped(const CallbackInfo& info) {
 
   std::string filename = info[0].As<Napi::String>().ToString();
   fast::MinimalPlayer player;
-  try {
+  try
+  {
     player.play(filename);
-
-  } catch (const std::exception& e) {
+  }
+  catch (const std::exception &e)
+  {
     Napi::TypeError::New(env, e.what()).ThrowAsJavaScriptException();
   }
 }
 
-Object InitAll(Env env, Object exports) {
+Object InitAll(Env env, Object exports)
+{
   exports.Set("start_client", Function::New(env, app::StartClientWrapped));
   return exports;
 }
