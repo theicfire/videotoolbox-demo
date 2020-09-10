@@ -7,8 +7,4 @@ This plans to be a low-resource h.264 video player, which we'll be using to buil
 
 # How to run
 - `tar xzf frames.tar.gz`
-- `cd addons/fast`
-- `yarn install`
-- `yarn build`
-- `cd ../..`
 - Run `node index.js`
