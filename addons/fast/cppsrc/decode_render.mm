@@ -143,11 +143,23 @@ bool DecodeRender::decode_render(std::vector<uint8_t> &frame) {
   VTDecodeFrameFlags flags = 0;
   // VTDecodeFrameFlags flags = kVTDecodeFrame_EnableAsynchronousDecompression;
   VTDecodeInfoFlags flagOut;
-  NSLog(@"Call decompress");
-  VTDecompressionSessionDecodeFrame(m_context->decompressionSession,
-                                    sampleBuffer, flags, NULL, &flagOut);
-  NSLog(@"Finish call to decompress. flagsOut: %d", flagOut);
+  NSLog(@"Call decompress with %p %p", m_context->decompressionSession,
+        sampleBuffer);
+  if (!m_context->decompressionSession) {
+    NSLog(@"EEK, no decompressionSession");
+  }
+  OSStatus decode_ret = VTDecompressionSessionDecodeFrame(
+      m_context->decompressionSession, sampleBuffer, flags, NULL, &flagOut);
+  NSLog(@"Finish call to decompress. flagsOut: %d. Ret: %d", flagOut,
+        decode_ret);
   CFRelease(sampleBuffer);
+
+  if (dispatch_semaphore_wait(m_context->semaphore, DISPATCH_TIME_NOW) != 0) {
+    NSLog(@"OH NO FAILURE to decode");
+    // dispatch_semaphore_signal(m_context->semaphore);
+    return false;
+  }
+  dispatch_semaphore_signal(m_context->semaphore);
   return true;
 }
 
@@ -210,16 +222,25 @@ void DecodeRender::Context::setup(std::vector<uint8_t> &frame) {
     (NSString *)kCVPixelBufferIOSurfacePropertiesKey : @{}
   };
 
-  VTDecompressionOutputCallbackRecord callBackRecord;
-  callBackRecord.decompressionOutputCallback = didDecompress;
-  callBackRecord.decompressionOutputRefCon = this;
-  decompressionSession = NULL;
-  NSLog(@"Call sessionCreate");
-  VTDecompressionSessionCreate(kCFAllocatorDefault, formatDescription,
-                               (__bridge CFDictionaryRef)decoderSpecification,
-                               (__bridge CFDictionaryRef)attributes,
-                               &callBackRecord, &decompressionSession);
-  NSLog(@"Done sessionCreate");
+  while (true) {
+    VTDecompressionOutputCallbackRecord callBackRecord;
+    callBackRecord.decompressionOutputCallback = didDecompress;
+    callBackRecord.decompressionOutputRefCon = this;
+    decompressionSession = NULL;
+    NSLog(@"Call sessionCreate");
+    OSStatus session_ret = VTDecompressionSessionCreate(
+        kCFAllocatorDefault, formatDescription,
+        (__bridge CFDictionaryRef)decoderSpecification,
+        (__bridge CFDictionaryRef)attributes, &callBackRecord,
+        &decompressionSession);
+    NSLog(@"session_ret: %d. And now release... in 1s", session_ret);
+    usleep(1000000);
+    if (decompressionSession) {
+      VTDecompressionSessionInvalidate(decompressionSession);
+      CFRelease(decompressionSession);
+    }
+    usleep(1000000);
+  }
 }
 
 CMSampleBufferRef DecodeRender::Context::create(std::vector<uint8_t> &frame,
