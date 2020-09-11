@@ -128,15 +128,18 @@ void MinimalPlayer::play(const std::string &path) {
         t.reset();
       }
       Timer t2;
-      decodeRender->decode_render(frames[index++].data);
-      printf("t2 is %f\n", t2.getElapsedMilliseconds());
-      usleep(4000);
-      if (index == 1) {
-        SDL_SetWindowSize(window, decodeRender->get_width(),
-                          decodeRender->get_height());
-        SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED,
-                              SDL_WINDOWPOS_CENTERED);
+      if (!decodeRender->decode_render(frames[index++].data)) {
+        // printf("Decoding failed. Will restart\n");
+        // restarting = true;
       }
+      printf("t2 is %f\n", t2.getElapsedMilliseconds());
+      usleep(100000);
+      // if (index == 1) {
+      //   SDL_SetWindowSize(window, decodeRender->get_width(),
+      //                     decodeRender->get_height());
+      //   SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED,
+      //                         SDL_WINDOWPOS_CENTERED);
+      // }
     }
 
     FILE *file = fopen("result.csv", "w");

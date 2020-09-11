@@ -122,6 +122,7 @@ DecodeRender::DecodeRender(SDL_Window *window) : m_context(new Context()) {
   }
 
   m_context->pipeline.completedHandler = ^{
+    NSLog(@"Render complete");
     dispatch_semaphore_signal(m_context->render_semaphore);
   };
 
@@ -150,12 +151,10 @@ DecodeRender::~DecodeRender() {
   }
 }
 
-void DecodeRender::decode_render(std::vector<uint8_t> &frame) {
+bool DecodeRender::decode_render(std::vector<uint8_t> &frame) {
   if (frame.size() == 0) {
-    return;
+    return true;
   }
-
-  dispatch_semaphore_wait(m_context->semaphore, DISPATCH_TIME_FOREVER);
 
   bool multiple_nalu = first_frame;
   if (first_frame) {
@@ -163,20 +162,33 @@ void DecodeRender::decode_render(std::vector<uint8_t> &frame) {
     first_frame = false;
   }
 
+  NSLog(@"decode_render. Check for semaphore");
+  if (dispatch_semaphore_wait(m_context->semaphore, DISPATCH_TIME_FOREVER) !=
+      0) {
+    NSLog(@"Failed to get semaphore in decode_render");
+    dispatch_semaphore_signal(m_context->semaphore);
+    return false;
+  }
+
   CMSampleBufferRef sampleBuffer = m_context->create(frame, multiple_nalu);
   if (sampleBuffer == NULL) {
+    NSLog(@"sampleBuffer is NULL");
     dispatch_semaphore_signal(m_context->semaphore);
-    return;
+    return false;
   }
 
   m_context->statistics.startFrame();
   m_context->statistics.startDecoding();
 
   VTDecodeFrameFlags flags = 0;
+  // VTDecodeFrameFlags flags = kVTDecodeFrame_EnableAsynchronousDecompression;
   VTDecodeInfoFlags flagOut;
+  NSLog(@"Call decompress");
   VTDecompressionSessionDecodeFrame(m_context->decompressionSession,
                                     sampleBuffer, flags, NULL, &flagOut);
+  NSLog(@"Finish call to decompress. flagsOut: %d", flagOut);
   CFRelease(sampleBuffer);
+  return true;
 }
 
 void DecodeRender::render_blank() {
@@ -192,9 +204,11 @@ void DecodeRender::reset() {
     return;
   }
 
+  NSLog(@"Resetting. Waiting for semaphore");
   dispatch_semaphore_wait(m_context->semaphore, DISPATCH_TIME_FOREVER);
 
   if (m_context->decompressionSession) {
+    NSLog(@"Resetting. Invalidate session");
     VTDecompressionSessionInvalidate(m_context->decompressionSession);
     CFRelease(m_context->decompressionSession);
     m_context->decompressionSession = NULL;
@@ -207,7 +221,9 @@ void DecodeRender::reset() {
 
   first_frame = true;
 
+  NSLog(@"Resetting. Signal semaphore");
   dispatch_semaphore_signal(m_context->semaphore);
+  NSLog(@"Resetting. Done");
 }
 
 int DecodeRender::get_width() { return m_context->videoDimensions.width; }
@@ -246,10 +262,12 @@ void DecodeRender::Context::setup(std::vector<uint8_t> &frame) {
   callBackRecord.decompressionOutputCallback = didDecompress;
   callBackRecord.decompressionOutputRefCon = this;
   decompressionSession = NULL;
+  NSLog(@"Call sessionCreate");
   VTDecompressionSessionCreate(kCFAllocatorDefault, formatDescription,
                                (__bridge CFDictionaryRef)decoderSpecification,
                                (__bridge CFDictionaryRef)attributes,
                                &callBackRecord, &decompressionSession);
+  NSLog(@"Done sessionCreate");
 }
 
 CMSampleBufferRef DecodeRender::Context::create(std::vector<uint8_t> &frame,
@@ -289,6 +307,7 @@ void DecodeRender::Context::didDecompress(
     void *decompressionOutputRefCon, void *sourceFrameRefCon, OSStatus status,
     VTDecodeInfoFlags infoFlags, CVImageBufferRef imageBuffer,
     CMTime presentationTimeStamp, CMTime presentationDuration) {
+  NSLog(@"Hit didDecompress");
   DecodeRender::Context *context =
       (DecodeRender::Context *)decompressionOutputRefCon;
 
@@ -305,14 +324,18 @@ void DecodeRender::Context::didDecompress(
     return;
   }
 
-  if (dispatch_semaphore_wait(context->render_semaphore, DISPATCH_TIME_NOW) ==
-      0) {
-    dispatch_semaphore_signal(context->semaphore);
-    @autoreleasepool {
-      context->render(imageBuffer);
-    };
-  } else {
-    printf("Skip render\n");
-    dispatch_semaphore_signal(context->semaphore);
-  }
+  dispatch_semaphore_signal(context->semaphore);
+  // if (dispatch_semaphore_wait(context->render_semaphore, DISPATCH_TIME_NOW)
+  // ==
+  //     0) {
+  //   NSLog(@"didDecompress Call render");
+  //   dispatch_semaphore_signal(context->semaphore);
+  //   @autoreleasepool {
+  //     context->render(imageBuffer);
+  //   };
+  //   NSLog(@"didDecompress finish call render");
+  // } else {
+  //   printf("didDecompress Skip render\n");
+  //   dispatch_semaphore_signal(context->semaphore);
+  // }
 }
