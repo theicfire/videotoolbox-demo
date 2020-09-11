@@ -227,19 +227,22 @@ void DecodeRender::Context::setup(std::vector<uint8_t> &frame) {
     callBackRecord.decompressionOutputCallback = didDecompress;
     callBackRecord.decompressionOutputRefCon = this;
     decompressionSession = NULL;
-    NSLog(@"Call sessionCreate");
     OSStatus session_ret = VTDecompressionSessionCreate(
         kCFAllocatorDefault, formatDescription,
         (__bridge CFDictionaryRef)decoderSpecification,
         (__bridge CFDictionaryRef)attributes, &callBackRecord,
         &decompressionSession);
-    NSLog(@"session_ret: %d. And now release... in 1s", session_ret);
-    usleep(1000000);
+    if (session_ret != 0) {
+      NSLog(@"Failure. Error code: %d", session_ret);
+    } else {
+      NSLog(@"Successfully created the encoder");
+    }
+    usleep(100000);
     if (decompressionSession) {
       VTDecompressionSessionInvalidate(decompressionSession);
       CFRelease(decompressionSession);
     }
-    usleep(1000000);
+    usleep(100000);
   }
 }
 
