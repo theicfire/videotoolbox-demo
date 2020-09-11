@@ -50,11 +50,9 @@ struct DecodeRender::Context {
   dispatch_semaphore_t render_semaphore;
   CMMemoryPoolRef memoryPool;
   VTDecompressionSessionRef decompressionSession;
-  RenderingPipeline *pipeline;
   CMVideoFormatDescriptionRef formatDescription;
   CMVideoDimensions videoDimensions;
   PlayerStatistics statistics;
-  CALayer *connectionErrorLayer;
 
   Context()
       : semaphore(NULL), memoryPool(NULL), decompressionSession(NULL),
@@ -103,46 +101,8 @@ std::vector<FrameStatistics> DecodeRender::getFrameStatistics() const {
   return m_context->statistics.getFrameStatistics();
 }
 
-DecodeRender::DecodeRender(SDL_Window *window) : m_context(new Context()) {
+DecodeRender::DecodeRender() : m_context(new Context()) {
   printf("Init DecodeRender\n");
-  SDL_SetHint(SDL_HINT_RENDER_DRIVER, "metal");
-  SDL_Renderer *renderer =
-      SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC);
-  CAMetalLayer *metalLayer =
-      (__bridge CAMetalLayer *)SDL_RenderGetMetalLayer(renderer);
-
-  // TODO why we destroy renderer here?
-  SDL_DestroyRenderer(renderer);
-
-  NSError *error;
-  m_context->pipeline = [[RenderingPipeline alloc] initWithLayer:metalLayer
-                                                           error:&error];
-  if (m_context->pipeline == nil) {
-    throw std::runtime_error(error.localizedDescription.UTF8String);
-  }
-
-  m_context->pipeline.completedHandler = ^{
-    NSLog(@"Render complete");
-    dispatch_semaphore_signal(m_context->render_semaphore);
-  };
-
-  NSString *fileName =
-      [NSString stringWithFormat:@"poor_connection%dx.bmp",
-                                 (int)metalLayer.contentsScale];
-  NSImage *connectionErrorImage =
-      [[NSImage alloc] initWithContentsOfFile:fileName];
-  if (connectionErrorImage == nil) {
-    printf("Error: failed to load image: %s\n", fileName.UTF8String);
-    return;
-  }
-
-  m_context->connectionErrorLayer = [CALayer layer];
-  m_context->connectionErrorLayer.frame = metalLayer.bounds;
-  m_context->connectionErrorLayer.contentsScale = metalLayer.contentsScale;
-  m_context->connectionErrorLayer.contentsGravity = kCAGravityBottomRight;
-  m_context->connectionErrorLayer.contents = connectionErrorImage;
-
-  [metalLayer addSublayer:m_context->connectionErrorLayer];
 }
 
 DecodeRender::~DecodeRender() {
@@ -191,13 +151,7 @@ bool DecodeRender::decode_render(std::vector<uint8_t> &frame) {
   return true;
 }
 
-void DecodeRender::render_blank() {
-  dispatch_semaphore_wait(m_context->render_semaphore, DISPATCH_TIME_FOREVER);
-
-  if (![m_context->pipeline render:NULL]) {
-    dispatch_semaphore_signal(m_context->render_semaphore);
-  }
-}
+void DecodeRender::render_blank() {}
 
 void DecodeRender::reset() {
   if (m_context == NULL) {
@@ -230,9 +184,7 @@ int DecodeRender::get_width() { return m_context->videoDimensions.width; }
 
 int DecodeRender::get_height() { return m_context->videoDimensions.height; }
 
-void DecodeRender::setConnectionErrorVisible(bool visible) {
-  m_context->connectionErrorLayer.hidden = visible ? NO : YES;
-}
+void DecodeRender::setConnectionErrorVisible(bool visible) {}
 
 void DecodeRender::Context::setup(std::vector<uint8_t> &frame) {
   formatDescription =
@@ -288,17 +240,7 @@ CMSampleBufferRef DecodeRender::Context::create(std::vector<uint8_t> &frame,
   return sampleBuffer;
 }
 
-void DecodeRender::Context::render(CVImageBufferRef imageBuffer) {
-  statistics.endDecoding();
-
-  statistics.startRendering();
-  if (![pipeline render:imageBuffer]) {
-    dispatch_semaphore_signal(render_semaphore);
-  }
-  statistics.endRendering();
-
-  statistics.endFrame();
-}
+void DecodeRender::Context::render(CVImageBufferRef imageBuffer) {}
 
 /*
  This callback gets called everytime the decompresssion session decodes a frame

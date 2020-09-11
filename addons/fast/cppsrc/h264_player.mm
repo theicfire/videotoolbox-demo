@@ -91,32 +91,16 @@ void MinimalPlayer::play(const std::string &path) {
     return;
   }
 
-  if (SDL_InitSubSystem(SDL_INIT_VIDEO)) {
-    throw std::runtime_error("SDL::InitSubSystem");
-  }
-
-  SDL_Window *window = SDL_CreateWindow(
-      "VideoToolbox Decoder" /* title */, SDL_WINDOWPOS_CENTERED /* x */,
-      SDL_WINDOWPOS_CENTERED /* y */, 1920, 1080,
-      SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-  if (!window) {
-    throw std::runtime_error("SDL::CreateWindow");
-  }
-
   printf("Number of frames: %lu\n", frames.size());
 
   @autoreleasepool {
-    decodeRender = std::make_unique<DecodeRender>(window);
+    decodeRender = std::make_unique<DecodeRender>();
 
     size_t index = 0;
     bool quit = false;
     // frames.size()
     playing = true;
     while (!quit && index < frames.size()) {
-      SDL_Event e;
-      if (SDL_PollEvent(&e)) {
-        handle_event(e);
-      }
       if (!playing) {
         continue;
       }
@@ -151,7 +135,4 @@ void MinimalPlayer::play(const std::string &path) {
       fclose(file);
     }
   };
-
-  SDL_DestroyWindow(window);
-  SDL_Quit();
 }
