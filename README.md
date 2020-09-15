@@ -5,6 +5,12 @@ This plans to be a low-resource h.264 video player, which we'll be using to buil
 - You need SDL2. `brew install sdl2` should work. You may have to do something about linking headers -- look at the output of this command.
 - You also need to install [yarn](https://yarnpkg.com/lang/en/docs/install/#mac-stable)
 
-# How to run
+# How to run via node
 - `tar xzf frames.tar.gz`
 - Run `node index.js`
+
+# How to run via XCode
+- `tar xzf frames.tar.gz`
+- Open xcode-alternative in XCode
+- Modify the path in main.m for player.play
+- Run!

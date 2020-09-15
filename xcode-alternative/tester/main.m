@@ -16,11 +16,9 @@
 
 int main(int argc, const char * argv[]) {
     @autoreleasepool {
-        // insert code here...
-        NSLog(@"Hello, World!");
-        
+        NSLog(@"Please modify main.m to point to the right frames path (the output of tar xzf frames.tar.gz)");
         fast::MinimalPlayer player;
-        player.play("/Users/chase/code/speedy-mplayer/frames");
+//        player.play("/Users/chase/code/speedy-mplayer/frames");
     }
     
     return 0;
