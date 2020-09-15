@@ -12,8 +12,6 @@
 #import <QuartzCore/CAMetalLayer.h>
 #import <VideoToolbox/VideoToolbox.h>
 
-#import "RenderingPipeline.h"
-
 using namespace fast;
 
 PlayerStatistics::PlayerStatistics() : m_index(0), m_currentFrame({0, 0, 0}) {}
@@ -47,7 +45,6 @@ std::vector<FrameStatistics> PlayerStatistics::getFrameStatistics() const {
 
 struct DecodeRender::Context {
   dispatch_semaphore_t semaphore;
-  dispatch_semaphore_t render_semaphore;
   CMMemoryPoolRef memoryPool;
   VTDecompressionSessionRef decompressionSession;
   CMVideoFormatDescriptionRef formatDescription;
@@ -58,17 +55,13 @@ struct DecodeRender::Context {
       : semaphore(NULL), memoryPool(NULL), decompressionSession(NULL),
         formatDescription(NULL) {
     semaphore = dispatch_semaphore_create(1);
-    render_semaphore = dispatch_semaphore_create(1);
     memoryPool = CMMemoryPoolCreate(NULL);
   }
 
   ~Context() {
-    // wait for the current rendering operation to be completed
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
-    dispatch_semaphore_wait(render_semaphore, DISPATCH_TIME_FOREVER);
     // semaphore must have initial value when dispose
     dispatch_semaphore_signal(semaphore);
-    dispatch_semaphore_signal(render_semaphore);
 
     if (decompressionSession) {
       VTDecompressionSessionInvalidate(decompressionSession);
@@ -87,7 +80,6 @@ struct DecodeRender::Context {
 
   void setup(std::vector<uint8_t> &frame);
   CMSampleBufferRef create(std::vector<uint8_t> &frame, bool multiple_nalu);
-  void render(CVImageBufferRef imageBuffer);
 
   static void didDecompress(void *decompressionOutputRefCon,
                             void *sourceFrameRefCon, OSStatus status,
@@ -162,8 +154,6 @@ bool DecodeRender::decode_render(std::vector<uint8_t> &frame) {
   dispatch_semaphore_signal(m_context->semaphore);
   return true;
 }
-
-void DecodeRender::render_blank() {}
 
 void DecodeRender::reset() {
   if (m_context == NULL) {
@@ -264,8 +254,6 @@ CMSampleBufferRef DecodeRender::Context::create(std::vector<uint8_t> &frame,
   return sampleBuffer;
 }
 
-void DecodeRender::Context::render(CVImageBufferRef imageBuffer) {}
-
 /*
  This callback gets called everytime the decompresssion session decodes a frame
  */
@@ -281,27 +269,7 @@ void DecodeRender::Context::didDecompress(
     NSLog(@"Error decompressing frame at time: %.3f error: %d infoFlags: %u",
           (float)presentationTimeStamp.value / presentationTimeStamp.timescale,
           (int)status, (unsigned int)infoFlags);
-    dispatch_semaphore_signal(context->semaphore);
-    return;
-  }
-
-  if (imageBuffer == NULL) {
-    dispatch_semaphore_signal(context->semaphore);
-    return;
   }
 
   dispatch_semaphore_signal(context->semaphore);
-  // if (dispatch_semaphore_wait(context->render_semaphore, DISPATCH_TIME_NOW)
-  // ==
-  //     0) {
-  //   NSLog(@"didDecompress Call render");
-  //   dispatch_semaphore_signal(context->semaphore);
-  //   @autoreleasepool {
-  //     context->render(imageBuffer);
-  //   };
-  //   NSLog(@"didDecompress finish call render");
-  // } else {
-  //   printf("didDecompress Skip render\n");
-  //   dispatch_semaphore_signal(context->semaphore);
-  // }
 }

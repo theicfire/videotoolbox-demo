@@ -26,7 +26,6 @@
             "cppsrc/main.cpp",
             "cppsrc/h264_common.cpp",
             "cppsrc/nalu_rewriter.cpp",
-            "cppsrc/RenderingPipeline.mm",
             "cppsrc/decode_render.mm",
             "cppsrc/h264_player.mm",
         ],
