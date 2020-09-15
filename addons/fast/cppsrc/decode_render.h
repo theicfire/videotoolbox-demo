@@ -39,7 +39,6 @@ public:
   ~DecodeRender();
   bool decode_render(std::vector<uint8_t> &frame);
   void decode_render_local(std::vector<uint8_t> &frame, bool multiple_nalu);
-  void render_blank();
   void reset();
   int get_width();
   int get_height();

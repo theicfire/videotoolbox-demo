@@ -7,10 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		AB6CD9142511740D0037BFAF /* h264_common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AB6CD90B2511740C0037BFAF /* h264_common.cpp */; };
-		AB6CD9152511740D0037BFAF /* h264_player.mm in Sources */ = {isa = PBXBuildFile; fileRef = AB6CD90C2511740C0037BFAF /* h264_player.mm */; };
-		AB6CD9172511740D0037BFAF /* nalu_rewriter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AB6CD9102511740C0037BFAF /* nalu_rewriter.cpp */; };
-		AB6CD9182511740D0037BFAF /* decode_render.mm in Sources */ = {isa = PBXBuildFile; fileRef = AB6CD9122511740D0037BFAF /* decode_render.mm */; };
 		AB6CD91B251174DD0037BFAF /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB6CD91A251174DD0037BFAF /* AppKit.framework */; };
 		AB6CD91D251174E30037BFAF /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB6CD91C251174E30037BFAF /* CoreVideo.framework */; };
 		AB6CD91F251174EA0037BFAF /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB6CD91E251174EA0037BFAF /* CoreMedia.framework */; };
@@ -18,7 +14,11 @@
 		AB6CD923251174FB0037BFAF /* VideoToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB6CD922251174FB0037BFAF /* VideoToolbox.framework */; };
 		AB6CD925251175010037BFAF /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB6CD924251175010037BFAF /* AVFoundation.framework */; };
 		AB6CD9272511750D0037BFAF /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB6CD9262511750D0037BFAF /* ApplicationServices.framework */; };
-		AB6CD92D251179750037BFAF /* libSDL2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = AB6CD92C251179750037BFAF /* libSDL2.a */; };
+		AB8B2BFC25117DB700FC4BB6 /* h264_player.mm in Sources */ = {isa = PBXBuildFile; fileRef = AB8B2BF425117DB700FC4BB6 /* h264_player.mm */; };
+		AB8B2BFD25117DB700FC4BB6 /* decode_render.mm in Sources */ = {isa = PBXBuildFile; fileRef = AB8B2BF825117DB700FC4BB6 /* decode_render.mm */; };
+		AB8B2BFE25117DB700FC4BB6 /* nalu_rewriter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AB8B2BF925117DB700FC4BB6 /* nalu_rewriter.cpp */; };
+		AB8B2BFF25117DB700FC4BB6 /* h264_common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AB8B2BFA25117DB700FC4BB6 /* h264_common.cpp */; };
+		AB8B2C0325117E8E00FC4BB6 /* libSDL2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = AB8B2C0225117E8E00FC4BB6 /* libSDL2.a */; };
 		ABB64486250C2F9E0043471A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = ABB64485250C2F9E0043471A /* main.m */; };
 /* End PBXBuildFile section */
 
@@ -35,15 +35,6 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		AB6CD90A2511740C0037BFAF /* decode_render.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = decode_render.h; sourceTree = "<group>"; };
-		AB6CD90B2511740C0037BFAF /* h264_common.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = h264_common.cpp; sourceTree = "<group>"; };
-		AB6CD90C2511740C0037BFAF /* h264_player.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = h264_player.mm; sourceTree = "<group>"; };
-		AB6CD90D2511740C0037BFAF /* h264_common.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = h264_common.h; sourceTree = "<group>"; };
-		AB6CD90F2511740C0037BFAF /* h264_player.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = h264_player.h; sourceTree = "<group>"; };
-		AB6CD9102511740C0037BFAF /* nalu_rewriter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = nalu_rewriter.cpp; sourceTree = "<group>"; };
-		AB6CD9112511740D0037BFAF /* nalu_rewriter.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = nalu_rewriter.h; sourceTree = "<group>"; };
-		AB6CD9122511740D0037BFAF /* decode_render.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = decode_render.mm; sourceTree = "<group>"; };
-		AB6CD9132511740D0037BFAF /* timer.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = timer.h; sourceTree = "<group>"; };
 		AB6CD91A251174DD0037BFAF /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
 		AB6CD91C251174E30037BFAF /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = System/Library/Frameworks/CoreVideo.framework; sourceTree = SDKROOT; };
 		AB6CD91E251174EA0037BFAF /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = System/Library/Frameworks/CoreMedia.framework; sourceTree = SDKROOT; };
@@ -51,7 +42,16 @@
 		AB6CD922251174FB0037BFAF /* VideoToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = VideoToolbox.framework; path = System/Library/Frameworks/VideoToolbox.framework; sourceTree = SDKROOT; };
 		AB6CD924251175010037BFAF /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		AB6CD9262511750D0037BFAF /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = System/Library/Frameworks/ApplicationServices.framework; sourceTree = SDKROOT; };
-		AB6CD92C251179750037BFAF /* libSDL2.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSDL2.a; path = tester/libSDL2.a; sourceTree = "<group>"; };
+		AB8B2BF325117DB700FC4BB6 /* nalu_rewriter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = nalu_rewriter.h; path = ../../addons/fast/cppsrc/nalu_rewriter.h; sourceTree = "<group>"; };
+		AB8B2BF425117DB700FC4BB6 /* h264_player.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = h264_player.mm; path = ../../addons/fast/cppsrc/h264_player.mm; sourceTree = "<group>"; };
+		AB8B2BF525117DB700FC4BB6 /* h264_player.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = h264_player.h; path = ../../addons/fast/cppsrc/h264_player.h; sourceTree = "<group>"; };
+		AB8B2BF625117DB700FC4BB6 /* h264_common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = h264_common.h; path = ../../addons/fast/cppsrc/h264_common.h; sourceTree = "<group>"; };
+		AB8B2BF725117DB700FC4BB6 /* timer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = timer.h; path = ../../addons/fast/cppsrc/timer.h; sourceTree = "<group>"; };
+		AB8B2BF825117DB700FC4BB6 /* decode_render.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = decode_render.mm; path = ../../addons/fast/cppsrc/decode_render.mm; sourceTree = "<group>"; };
+		AB8B2BF925117DB700FC4BB6 /* nalu_rewriter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = nalu_rewriter.cpp; path = ../../addons/fast/cppsrc/nalu_rewriter.cpp; sourceTree = "<group>"; };
+		AB8B2BFA25117DB700FC4BB6 /* h264_common.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = h264_common.cpp; path = ../../addons/fast/cppsrc/h264_common.cpp; sourceTree = "<group>"; };
+		AB8B2BFB25117DB700FC4BB6 /* decode_render.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = decode_render.h; path = ../../addons/fast/cppsrc/decode_render.h; sourceTree = "<group>"; };
+		AB8B2C0225117E8E00FC4BB6 /* libSDL2.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSDL2.a; path = tester/libSDL2.a; sourceTree = "<group>"; };
 		ABB64482250C2F9E0043471A /* tester */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = tester; sourceTree = BUILT_PRODUCTS_DIR; };
 		ABB64485250C2F9E0043471A /* main.m */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; path = main.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -65,7 +65,7 @@
 				AB6CD925251175010037BFAF /* AVFoundation.framework in Frameworks */,
 				AB6CD923251174FB0037BFAF /* VideoToolbox.framework in Frameworks */,
 				AB6CD921251174F00037BFAF /* CoreGraphics.framework in Frameworks */,
-				AB6CD92D251179750037BFAF /* libSDL2.a in Frameworks */,
+				AB8B2C0325117E8E00FC4BB6 /* libSDL2.a in Frameworks */,
 				AB6CD91F251174EA0037BFAF /* CoreMedia.framework in Frameworks */,
 				AB6CD91D251174E30037BFAF /* CoreVideo.framework in Frameworks */,
 				AB6CD91B251174DD0037BFAF /* AppKit.framework in Frameworks */,
@@ -92,7 +92,7 @@
 		ABB64479250C2F9E0043471A = {
 			isa = PBXGroup;
 			children = (
-				AB6CD92C251179750037BFAF /* libSDL2.a */,
+				AB8B2C0225117E8E00FC4BB6 /* libSDL2.a */,
 				ABB64484250C2F9E0043471A /* tester */,
 				ABB64483250C2F9E0043471A /* Products */,
 				AB6CD919251174DC0037BFAF /* Frameworks */,
@@ -110,15 +110,15 @@
 		ABB64484250C2F9E0043471A /* tester */ = {
 			isa = PBXGroup;
 			children = (
-				AB6CD90A2511740C0037BFAF /* decode_render.h */,
-				AB6CD9122511740D0037BFAF /* decode_render.mm */,
-				AB6CD90B2511740C0037BFAF /* h264_common.cpp */,
-				AB6CD90D2511740C0037BFAF /* h264_common.h */,
-				AB6CD90F2511740C0037BFAF /* h264_player.h */,
-				AB6CD90C2511740C0037BFAF /* h264_player.mm */,
-				AB6CD9102511740C0037BFAF /* nalu_rewriter.cpp */,
-				AB6CD9112511740D0037BFAF /* nalu_rewriter.h */,
-				AB6CD9132511740D0037BFAF /* timer.h */,
+				AB8B2BFB25117DB700FC4BB6 /* decode_render.h */,
+				AB8B2BF825117DB700FC4BB6 /* decode_render.mm */,
+				AB8B2BFA25117DB700FC4BB6 /* h264_common.cpp */,
+				AB8B2BF625117DB700FC4BB6 /* h264_common.h */,
+				AB8B2BF525117DB700FC4BB6 /* h264_player.h */,
+				AB8B2BF425117DB700FC4BB6 /* h264_player.mm */,
+				AB8B2BF925117DB700FC4BB6 /* nalu_rewriter.cpp */,
+				AB8B2BF325117DB700FC4BB6 /* nalu_rewriter.h */,
+				AB8B2BF725117DB700FC4BB6 /* timer.h */,
 				ABB64485250C2F9E0043471A /* main.m */,
 			);
 			path = tester;
@@ -181,11 +181,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AB6CD9152511740D0037BFAF /* h264_player.mm in Sources */,
-				AB6CD9182511740D0037BFAF /* decode_render.mm in Sources */,
-				AB6CD9142511740D0037BFAF /* h264_common.cpp in Sources */,
+				AB8B2BFC25117DB700FC4BB6 /* h264_player.mm in Sources */,
+				AB8B2BFF25117DB700FC4BB6 /* h264_common.cpp in Sources */,
+				AB8B2BFE25117DB700FC4BB6 /* nalu_rewriter.cpp in Sources */,
+				AB8B2BFD25117DB700FC4BB6 /* decode_render.mm in Sources */,
 				ABB64486250C2F9E0043471A /* main.m in Sources */,
-				AB6CD9172511740D0037BFAF /* nalu_rewriter.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

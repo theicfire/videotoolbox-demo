@@ -74,7 +74,7 @@ void MinimalPlayer::handle_event(SDL_Event &event) {
       playing = !playing;
       if (!playing) {
         // IMPORTANT do this only once for pause
-        decodeRender->render_blank();
+        // decodeRender->render_blank();
       }
     } else if (event.key.keysym.sym == 'r') {
       playing = true;
