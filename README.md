@@ -8,9 +8,3 @@ This plans to be a low-resource h.264 video player, which we'll be using to buil
 - You also need to install [yarn](https://yarnpkg.com/lang/en/docs/install/#mac-stable)
 - `tar xzf frames.tar.gz`
 - Run `node index.js`
-
-# How to run via XCode
-- `tar xzf frames.tar.gz`
-- Open xcode-alternative in XCode
-- Modify the path in main.m for player.play
-- Run!
