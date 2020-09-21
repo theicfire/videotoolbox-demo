@@ -75,7 +75,14 @@ std::vector<FrameEntry> load(const std::string &path) {
   return frames;
 }
 
+
 void MinimalPlayer::play(const std::string &path) {
+  Timer t;
+  std::vector<FrameEntry> frames = load(path);
+  if (frames.empty()) {
+    return;
+  }
+
   int err = SDL_InitSubSystem(SDL_INIT_VIDEO);
   if (err) {
     printf("SDL_Init failed: %s\n", SDL_GetError());
@@ -93,6 +100,26 @@ void MinimalPlayer::play(const std::string &path) {
   NSWindow *nswindow = info.info.cocoa.window;
 
   printf("Created window with backing scale factor %f\n", nswindow.backingScaleFactor);
+  @autoreleasepool {
+    //decodeRender = std::make_unique<DecodeRender>(window);
+
+    size_t index = 0;
+    bool quit = false;
+    // frames.size()
+    playing = true;
+    while (!quit && index < frames.size()) {
+      SDL_Event e;
+      if (SDL_PollEvent(&e)) { }
+      printf("Created window with backing scale factor %f\n", nswindow.backingScaleFactor);
+      usleep(50000);
+      if (index == 1) {
+        //SDL_SetWindowSize(window, decodeRender->get_width(),
+                          //decodeRender->get_height());
+        SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED,
+                              SDL_WINDOWPOS_CENTERED);
+      }
+    }
+  };
 
   SDL_DestroyWindow(window);
   SDL_Quit();
