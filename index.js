@@ -1,6 +1,6 @@
 function run_fast() {
   const addon = require("./addons/fast/addon.node");
-  addon.start_client("frames");
+  addon.benchmark_fec();
 }
 
 console.log("Starting client");
