@@ -28,6 +28,7 @@
             "cppsrc/nalu_rewriter.cpp",
             "cppsrc/decode_render.mm",
             "cppsrc/h264_player.mm",
+            "cppsrc/benchmark_fec.cpp",
         ],
         "include_dirs": [
             "<!@(node -p \"require('node-addon-api').include\")"
@@ -48,7 +49,8 @@
                     "-framework VideoToolbox",
                     "-framework AVFoundation",
                     "/System/Library/Frameworks/ApplicationServices.framework",
-                    "<(module_root_dir)/lib/mac/libSDL2.a"
+                    "<(module_root_dir)/lib/mac/libSDL2.a",
+                    "<(module_root_dir)/lib/mac/libfecpp.a",
                 ]
             }]
         ]

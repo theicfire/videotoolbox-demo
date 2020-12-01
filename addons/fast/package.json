@@ -17,7 +17,7 @@
     "babel-eslint": "^10.0.3",
     "eslint": "^6.5.1",
     "node-addon-api": "^1.6.2",
-    "node-gyp": "^3.8.0"
+    "node-gyp": "5.0.7"
   },
   "dependencies": {
     "chokidar": "^3.1.0",
